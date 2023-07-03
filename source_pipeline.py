@@ -3,12 +3,13 @@ from pathlib import Path
 import sys
 
 from astro_source.source import Source
-from line_little_helper.scripts.cassis_rebuild_map import rebuild_map
-from line_little_helper.scripts.moving_moments import main as moving_moments
-from line_little_helper.scripts.symmetric_moments import symmetric_moments
-from line_little_helper.scripts.pvmap_extractor import pvmap_extractor
-from line_little_helper.scripts.pvmap_fitter import pvmap_fitter
-from line_little_helper.scripts.spectrum_helper import spectrum_helper
+#from line_little_helper.scripts.cassis_rebuild_map import rebuild_map
+#from line_little_helper.scripts.moving_moments import main as moving_moments
+#from line_little_helper.scripts.symmetric_moments import symmetric_moments
+#from line_little_helper.scripts.pvmap_extractor import pvmap_extractor
+#from line_little_helper.scripts.pvmap_fitter import pvmap_fitter
+#from line_little_helper.scripts.spectrum_helper import spectrum_helper
+from line_little_helper.subcube_extractor import subcube_extractor
 from line_little_helper.molecule import NoTransitionError
 from line_little_helper.utils import normalize_qns
 from tile_plotter.plotter import plotter
@@ -32,6 +33,47 @@ line_lists = {
     'HC3N': 'CDMS',
     'NH2CHO': 'CDMS',
 }
+
+# Molecules and transitions of interest
+line_transitions = {'CH3OH': ['4(2,3)-5(1,4)A,vt=0',       #spw0
+                              '5(4,2)-6(3,3)E,vt=0',
+                              '18(3,15)-17(4,14)A,vt=0',
+                              '10(2,9)-9(3,6)A,vt=0',      #spw1
+                              '10(2,8)-9(3,7)A,vt=0',
+                              '18(3,16)-17(4,13)A,vt=0',
+                              '4(-2,3)-3(-1,2)E,vt=0',      #spw2
+                              '5(-1,4)-4(-2,3)E,vt=0',
+                              '20(-1,19)-20(-0,20)E,vt=0',
+                              '8(-0,8)-7(-1,6)E,vt=0',     #spw3
+                              '23(-5,18)-22(-6,17)E,vt=0',
+                              '25(-3,23)-24(-4,20)E,vt=0',
+                              '6(1,5)-7(2,6)--,vt=1',      # other
+                              '13(3,10)-14(4,10)A,vt=2',
+                              '34(-13,22)-33(-11,22)E,vt=0-vt=1',
+                              ],
+                     '(13)CH3OH': ['10(2,8)-9(3,7)++',
+                                   '5(1,5)-4(1,4)++'],
+                     'CH3CN': ['12(3)-11(3)',
+                               '12(4)-11(4)',
+                               '12(8)-11(8)'],
+                     '(13)CH3CN': ['13(3)-12(3)',
+                                   '13(4)-12(4)'],
+                     'CH3CHO': ['2(2,0)-3(1,3)A++,vt=2'],
+                     'HNCO': ['28(1,28)-29(0,29)',
+                              '10(3,8)-9(3,7)',
+                              '10(0,10)-9(0,9)'],
+                     'CH3OCHO': ['20(0,20)-19(0,19)A',
+                                 '32(9,24)-32(8,25)E',
+                                 '48(14,35)-47(15,32)E'],
+                     'SO2': ['59(14,46)-60(13,47)',
+                             '28(3,25)-28(2,26)',
+                             '99(9,91)-98(10,88)',
+                             '94(21,73)-95(20,76)'],
+                     'HC3N': ['J=24-23,l=0',
+                              'J=24-23,l=2e',
+                              'J=24-23,l=1f'],
+                     'NH2CHO': ['11(2,10)-10(2,9)'],
+                     }
 
 def search_molecule(source, molecule):
     data = []
@@ -78,51 +120,69 @@ def gen_plot_config(source, moments, template, outfile, mol=None, qns=None):
 def plot_continuum(source, outdir):
     pass
 
+def crop_line(source,
+              outdir,
+              configs,
+              figures,
+              molecules=['CH3OH'],
+              qns_mol = line_transitions,
+              half_width=30):
+    for mol in molecules:
+        configs_with_mol = search_molecule(source, mol)
+        processed = []
+        norm_mol = mol.replace('(', '').replace(')', '')
+        for qns in qns_mol[mol]:
+            if qns in processed:
+                continue
+            norm_qns = normalize_qns(qns)
+
+            for src_cfg in configs_with_mol:
+                cube = src_cfg['file']
+                
+                # Flags
+                flags = ['--vlsr', f'{source.vlsr.value}',
+                         f'{source.vlsr.unit}'.replace(' ', ''),
+                         '--line_lists', line_lists.get(mol, 'CDMS'),
+                         '--molecule', mol,
+                         '--qns', qns,
+                         '--common_beam',
+                         '--put_linefreq',
+                         '--win_halfwidth', f'{half_width}',
+                         '--spectral_axis', 'velocity',
+                        ]
+                if 'rms' in src_cfg:
+                    flags += ['--rms'] + src_cfg['rms'].split()
+
+                # Is there a mask?
+                moldir = outdir / norm_mol
+                mask = moldir / 'source_mask.fits'
+                if mask.is_file():
+                    flags += ['--mask', f'{mask}', '--shrink']
+                    masked = '_masked_shrink'
+                else:
+                    masked = ''
+                
+                # Compute moments
+                try:
+                    print(cube)
+                    name = f'{norm_mol}_{norm_qns}_nchans{half_width*2}{masked}.fits'
+                    out_cube = moldir / name
+                    moldir.mkdir(parents=True, exist_ok=True)
+                    subcube_extractor(flags + [cube, f'{out_cube}'])
+                    processed.append(qns)
+                except NoTransitionError:
+                    print(f'{mol} ({qns}): not in cube {cube}')
+                    continue
+
 def moments(source,
             outdir,
             configs,
             figures,
             #molecules=['CH3CN', '(13)CH3CN', '(13)CH3OH', 'CH3CHO', 'HNCO',
             #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
-            molecules=['(13)CH3OH', 'CH3OH'],
-            qns_mol={'CH3OH': ['4(2,3)-5(1,4)A,vt=0',       #spw0
-                               '5(4,2)-6(3,3)E,vt=0',
-                               '18(3,15)-17(4,14)A,vt=0',
-                               '10(2,9)-9(3,6)A,vt=0',      #spw1
-                               '10(2,8)-9(3,7)A,vt=0',
-                               '18(3,16)-17(4,13)A,vt=0',
-                               '4(-2,3)-3(-1,2)E,vt=0',      #spw2
-                               '5(-1,4)-4(-2,3)E,vt=0',
-                               '20(-1,19)-20(-0,20)E,vt=0',
-                               '8(-0,8)-7(-1,6)E,vt=0',     #spw3
-                               '23(-5,18)-22(-6,17)E,vt=0',
-                               '25(-3,23)-24(-4,20)E,vt=0',
-                               '6(1,5)-7(2,6)--,vt=1',      # other
-                               '13(3,10)-14(4,10)A,vt=2',
-                               '34(-13,22)-33(-11,22)E,vt=0-vt=1',
-                               ],
-                     '(13)CH3OH': ['10(2,8)-9(3,7)++',
-                                   '5(1,5)-4(1,4)++'],
-                     'CH3CN': ['12(3)-11(3)',
-                               '12(4)-11(4)',
-                               '12(8)-11(8)'],
-                     '(13)CH3CN': ['13(3)-12(3)',
-                                   '13(4)-12(4)'],
-                     'CH3CHO': ['2(2,0)-3(1,3)A++,vt=2'],
-                     'HNCO': ['28(1,28)-29(0,29)',
-                              '10(3,8)-9(3,7)',
-                              '10(0,10)-9(0,9)'],
-                     'CH3OCHO': ['20(0,20)-19(0,19)A',
-                                 '32(9,24)-32(8,25)E',
-                                 '48(14,35)-47(15,32)E'],
-                     'SO2': ['59(14,46)-60(13,47)',
-                             '28(3,25)-28(2,26)',
-                             '99(9,91)-98(10,88)',
-                             '94(21,73)-95(20,76)'],
-                     'HC3N': ['J=24-23,l=0',
-                              'J=24-23,l=2e'],
-                     'NH2CHO': ['11(2,10)-10(2,9)'],
-                     },
+            #molecules=['(13)CH3OH', 'CH3OH'],
+            molecules=['HC3N'],
+            qns_mol=line_transitions,
             half_width=10):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
     for mol in molecules:
@@ -296,8 +356,9 @@ if __name__ == '__main__':
         4: pv_maps,
         5: extract_cassis,
         6: cassis_to_fits,
+        7: crop_line,
     }
-    skip = [1, 2, 3, 4, 5]
+    skip = [1, 2, 3, 4, 5, 6]
 
     # Read sources from command line
     #sources = ['IRAS_180891732', 'G336.01-0.82']
