@@ -5,14 +5,16 @@ import sys
 from astro_source.source import Source
 #from line_little_helper.scripts.cassis_rebuild_map import rebuild_map
 #from line_little_helper.scripts.moving_moments import main as moving_moments
-#from line_little_helper.scripts.symmetric_moments import symmetric_moments
-#from line_little_helper.scripts.pvmap_extractor import pvmap_extractor
-#from line_little_helper.scripts.pvmap_fitter import pvmap_fitter
 #from line_little_helper.scripts.spectrum_helper import spectrum_helper
-from line_little_helper.subcube_extractor import subcube_extractor
+from line_little_helper.line_peak_map import line_peak_map
 from line_little_helper.molecule import NoTransitionError
+from line_little_helper.pvmap_extractor import pvmap_extractor
+from line_little_helper.pvmap_fitter import pvmap_fitter
+from line_little_helper.subcube_extractor import subcube_extractor
+from line_little_helper.symmetric_moments import symmetric_moments
 from line_little_helper.utils import normalize_qns
 from tile_plotter.plotter import plotter
+
 
 from common_paths import *
 
@@ -75,10 +77,10 @@ line_transitions = {'CH3OH': ['4(2,3)-5(1,4)A,vt=0',       #spw0
                      'NH2CHO': ['11(2,10)-10(2,9)'],
                      }
 
-def search_molecule(source, molecule):
+def search_molecule(source, molecule, array):
     data = []
     for key in src.get_data_sections():
-        if 'molecules' not in src.config[key]:
+        if 'molecules' not in src.config[key] or array not in key:
             continue
         molecules = src.config[key]['molecules'].split()
         if molecule in molecules:
@@ -117,18 +119,16 @@ def gen_plot_config(source, moments, template, outfile, mol=None, qns=None):
     with open(outfile, 'w') as configfile:
         config.write(configfile)
 
-def plot_continuum(source, outdir):
-    pass
-
 def crop_line(source,
               outdir,
               configs,
               figures,
+              array,
               molecules=['CH3OH'],
               qns_mol = line_transitions,
               half_width=30):
     for mol in molecules:
-        configs_with_mol = search_molecule(source, mol)
+        configs_with_mol = search_molecule(source, mol, array)
         processed = []
         norm_mol = mol.replace('(', '').replace(')', '')
         for qns in qns_mol[mol]:
@@ -178,15 +178,17 @@ def moments(source,
             outdir,
             configs,
             figures,
+            array,
             #molecules=['CH3CN', '(13)CH3CN', '(13)CH3OH', 'CH3CHO', 'HNCO',
             #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
             #molecules=['(13)CH3OH', 'CH3OH'],
-            molecules=['HC3N'],
+            #molecules=['HC3N'],
+            molecules=['CH3OH'],
             qns_mol=line_transitions,
             half_width=10):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
     for mol in molecules:
-        configs_with_mol = search_molecule(source, mol)
+        configs_with_mol = search_molecule(source, mol, array)
         processed = []
         norm_mol = mol.replace('(', '').replace(')', '')
         for qns in qns_mol[mol]:
@@ -197,7 +199,7 @@ def moments(source,
                 cube = src_cfg['file']
                 # Plot config
                 norm_qns = normalize_qns(qns)
-                cfg = f'{source.name}_{norm_mol}_{norm_qns}.cfg'
+                cfg = f'{source.name}_{array}_{norm_mol}_{norm_qns}.cfg'
                 cfg = configs / 'plots' / cfg
                 if cfg.exists():
                     continue
@@ -208,7 +210,7 @@ def moments(source,
                          '--line_lists', line_lists.get(mol, 'CDMS'),
                          '--molecule', mol,
                          '--qns', qns,
-                         '--nsigma', '3',
+                         '--nsigma', '5',
                          '--win_halfwidth', f'{half_width}',
                         ]
                 if 'rms' in src_cfg:
@@ -231,19 +233,19 @@ def moments(source,
                                 qns=qns)
 
                 # Plot
-                plotname = figures / source.name 
+                plotname = figures / source.name / array
                 plotname.mkdir(parents=True, exist_ok=True)
                 plotname = plotname / f'{mol}_{norm_qns}.png'
                 plotter([f'{cfg}', f'{plotname}'])
 
-def pv_maps(source, outdir, configs, figures):
+def pv_maps(source, outdir, configs, figures, array):
     # Search for configs
     streams = configs / f'pvmaps/{source.name}_streams.cfg'
     rotation = configs / f'pvmaps/{source.name}_rotation.cfg'
     if streams.is_file():
-        pv_streams(streams, source, outdir, figures)
-    #if rotation.is_file():
-    #    pv_rotation(rotation, source, outdir, figures)
+        pv_streams(streams, source, outdir, figures, array)
+    if rotation.is_file():
+        pv_rotation(rotation, source, outdir, figures, array)
 
 def pv_extractor(pvconfig, source, outdir, recenter=False):
     results = outdir / f'{pvconfig.stem}.fits'
@@ -255,7 +257,7 @@ def pv_extractor(pvconfig, source, outdir, recenter=False):
     return pvmap_extractor(flags)
     #return results.parent.glob(f'{pvconfig.stem}*.fits')
     
-def pv_streams(pvconfig, source, outdir, figures):
+def pv_streams(pvconfig, source, outdir, figures, array):
     # Extract pv maps
     pvout = outdir / 'pvmaps'
     pvmaps = list(pvout.glob('*stream*.fits'))
@@ -263,27 +265,27 @@ def pv_streams(pvconfig, source, outdir, figures):
         pvmaps = pv_extractor(pvconfig, source, pvout)
 
     # Fit gradient
-    plotname = figures / source.name / 'pvmaps_streams.png'
+    plotname = figures / source.name / array / 'pvmaps_streams.png'
     flags = ['--bunit', 'mJy/beam', '--outdir', f'{pvout}', '--plotname',
              f'{plotname}']
     print(pvmaps)
     pvmap_fitter(list(map(str, pvmaps)) + flags)
 
-def pv_rotation(pvconfig, source, outdir, figures):
+def pv_rotation(pvconfig, source, outdir, figures, array):
     pvout = outdir / 'pvmaps'
     pvmaps = pv_extractor(pvconfig, source, pvout, recenter=True)
 
     # Fit gradient
-    plotname = figures / source.name / 'pvmaps_rotation.png'
+    plotname = figures / source.name / array / 'pvmaps_rotation.png'
     flags = ['--bunit', 'mJy/beam', '--outdir', f'{pvout}', '--plotname',
              f'{plotname}', '--function', 'plot']
     pvmap_fitter(list(map(str, pvmaps)) + flags)
 
-def split_moments(source, outdir, configs, figures,
+def split_moments(source, outdir, configs, figures, array,
                   molecules=['SiO', '(13)CO']):
     # Calculate split moments
     for mol in molecules:
-        configs_with_mol = search_molecule(source, mol)
+        configs_with_mol = search_molecule(source, mol, array)
         for config in configs_with_mol:
             cube = config['file']
             flags = ['--vlsr', f'{source.vlsr.value}',
@@ -296,10 +298,10 @@ def split_moments(source, outdir, configs, figures,
                 flags += ['--rms'] + config['rms'].split()
             moving_moments(flags + ['80', f'{outdir / mol}', cube])
 
-def extract_cassis(src, outdir, configs, figures, mol='CH3OH'):
+def extract_cassis(src, outdir, configs, figures, array, mol='CH3OH'):
     """Extract spectra for CASSIS fit."""
     # Cubes
-    configs_with_mol = search_molecule(src, mol)
+    configs_with_mol = search_molecule(src, mol, array)
     cubes = []
     for src_cfg in configs_with_mol:
         cubes.append(f"{src_cfg['file']}")
@@ -321,7 +323,7 @@ def extract_cassis(src, outdir, configs, figures, mol='CH3OH'):
 
     spectrum_helper(cubes + flags)
 
-def cassis_to_fits(src, outdir, configs, figures, mol='CH3OH'):
+def cassis_to_fits(src, outdir, configs, figures, array, mol='CH3OH'):
     """Build the fits images from CASSIS results."""
     # Results
     results = outdir / mol / 'spectra_lte_fit'
@@ -342,6 +344,53 @@ def cassis_to_fits(src, outdir, configs, figures, mol='CH3OH'):
     flags = ['-e']
     rebuild_map(flags + [str(maskfile), str(results)])
 
+def peak_maps(source,
+                outdir,
+                configs,
+                figures,
+                array,
+                molecules=['CH3OH'],
+                qns_mol=line_transitions,
+                half_width=10):
+    for mol in molecules:
+        configs_with_mol = search_molecule(source, mol, array)
+        processed = []
+        norm_mol = mol.replace('(', '').replace(')', '')
+        for qns in qns_mol[mol]:
+            if qns in processed:
+                continue
+
+            for src_cfg in configs_with_mol:
+                cube = src_cfg['file']
+                # Plot config
+                norm_qns = normalize_qns(qns)
+                
+                # Moment flags
+                flags = ['--vlsr', f'{source.vlsr.value}',
+                         f'{source.vlsr.unit}'.replace(' ', ''),
+                         '--line_lists', line_lists.get(mol, 'CDMS'),
+                         '--molecule', mol,
+                         '--qns', qns,
+                         '--nsigma', '5',
+                         '--win_halfwidth', f'{half_width}',
+                         '--moments', '0', '1',
+                         '--use_dask',
+                         '--common_beam',
+                        ]
+                if 'rms' in src_cfg:
+                    flags += ['--rms'] + src_cfg['rms'].split()
+                
+                # Compute moments
+                try:
+                    name = f'{norm_mol}_{norm_qns}'
+                    moldir = outdir / norm_mol
+                    moldir.mkdir(parents=True, exist_ok=True)
+                    filenames = line_peak_map(flags + [cube, f'{moldir}'])
+                    processed.append(qns)
+                except NoTransitionError:
+                    print(f'{mol} ({qns}): not in cube {cube}')
+                    continue
+
 if __name__ == '__main__':
     ## Constants
     #results = Path('/data/share/binary_project/results')
@@ -350,15 +399,17 @@ if __name__ == '__main__':
 
     # Steps
     steps = {
-        1: plot_continuum,
-        2: moments,
-        3: split_moments,
-        4: pv_maps,
-        5: extract_cassis,
-        6: cassis_to_fits,
-        7: crop_line,
+        1: moments,
+        2: split_moments,
+        3: pv_maps,
+        4: extract_cassis,
+        5: cassis_to_fits,
+        6: crop_line,
+        7: peak_maps,
     }
-    skip = [1, 2, 3, 4, 5, 6]
+    skip = [2, 3, 4, 5, 6]
+    #array = 'c8'
+    array = 'concat'
 
     # Read sources from command line
     #sources = ['IRAS_180891732', 'G336.01-0.82']
@@ -369,11 +420,11 @@ if __name__ == '__main__':
     for config in iterover:
         # Open source
         src = Source(config_file=config)
-        outdir = results / src.name
+        outdir = results / src.name / array
 
         # Run steps
         for n, func in steps.items():
             if n in skip:
                 continue
             print(f'Step {n}')
-            func(src, outdir, configs, figures)
+            func(src, outdir, configs, figures, array)
