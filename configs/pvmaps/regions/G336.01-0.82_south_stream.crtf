@@ -1,0 +1,2 @@
+#CRTFv0 CASA Region Text Format version 0
+poly [[248.78862844deg, -48.77992155deg], [248.78862844deg, -48.77994570deg], [248.78863083deg, -48.77995515deg], [248.78862446deg, -48.77997038deg], [248.78861091deg, -48.77998245deg], [248.78859099deg, -48.78000608deg], [248.78858063deg, -48.78001920deg], [248.78856709deg, -48.78003496deg], [248.78855354deg, -48.78004913deg]] coord=ICRS, corr=[I], linewidth=1, linestyle=-, symsize=1, symthick=1, color=magenta, font="DejaVu Sans", fontsize=11, fontstyle=normal, usetex=false
