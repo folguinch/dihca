@@ -191,7 +191,10 @@ def plot_stream_map(obsdata, streamer, streamer_vel, filename, v_lsr):
     #             lw=2, ls='-', )
     handler.scatter(streamer.ra, streamer.dec, c=streamer_vel.value,
                     cmap='vik', norm=handler.vscale.get_normalization(),
-                    zorder=4)
+                    zorder=5)
+    handler.plot(streamer.ra, streamer.dec, linestyle='-', linewidth=10,
+                 solid_capstyle='round',
+                 color='k', zorder=4, transform=handler.get_transform())
 
     # Configuration
     map_plot.apply_config(loc, handler, 'moment')
@@ -236,6 +239,12 @@ def fit_streamer(data: ObsData, model: ModelPars, outdir: Path):
 
         # Iterate models
         for fname, vals in component:
+            # Output region
+            reg_name = outdir / 'regions' / f'stream_{name}_{fname}.crtf'
+            if reg_name.exists():
+                print(f'Skipping {fname}: already calculated')
+                continue
+
             # Parameters
             rmin, r0, rc, theta0, phi0, v_r0 = vals
             omega0 = np.sqrt(rc * ct.G * model.Mstar) / r0**2
@@ -258,12 +267,17 @@ def fit_streamer(data: ObsData, model: ModelPars, outdir: Path):
             # Stream line into arcsec
             dra = -dra.value / model.distance.to(u.pc).value * u.arcsec
             ddec = ddec.value / model.distance.to(u.pc).value * u.arcsec
+            if not np.any(np.isfinite(vel)):
+                print(f'Skipping {fname}: no finite solutions')
+                continue
 
             # Save as region
-            reg_name = outdir / 'regions' / f'stream_{name}_{fname}.crtf'
             fil = SkyCoord(dra, ddec,
                            frame=model.position.skyoffset_frame())
             fil = fil.transform_to(ICRS)
+            fil_table = fil.to_table()
+            fil_table.add_column(vel, name='vlsr')
+            fil_table.write(reg_name.with_suffix('.ecsv'), overwrite=True)
             fil_reg = PolygonSkyRegion(vertices=fil)
             print(f'Saving region: {reg_name}')
             fil_reg.write(str(reg_name), format='crtf', overwrite=True)
@@ -355,7 +369,7 @@ def fit_streamer(data: ObsData, model: ModelPars, outdir: Path):
 
 if __name__ == '__main__':
     basedir = Path('/data/share/binary_project/')
-    results = basedir / 'results/G336.01-0.82/CH3OH'
+    results = basedir / 'results/G336.01-0.82/concat/CH3OH'
     regions = basedir / 'configs/pvmaps/regions'
     figures = results / 'streamer_models'
     moment0 = results / 'CH3OH_18_3_15_-17_4_14_A_vt_0.subcube.moment0.fits'
@@ -387,34 +401,38 @@ if __name__ == '__main__':
 
     # Model parameters
     north_pars = FitPars(
-        np.array([600]) * u.au,
+        np.array([400, 500]) * u.au,
         #np.array([1000, 1500, 2000, 2500, 3000]) * u.au,
-        np.array([2500]) * u.au,
+        #np.array([2500]) * u.au,
+        np.array([2000, 2500, 3000]) * u.au,
         np.array([600]) * u.au,
         #np.array([70, 75, 80]) * u.deg,
-        np.array([80]) * u.deg,
+        #np.array([80]) * u.deg,
+        np.array([70, 75, 80, 85]) * u.deg,
         #np.array([50, 60, 70, 80]) * u.deg,
-        np.array([60]) * u.deg,
+        #np.array([60]) * u.deg,
+        np.array([45, 50, 55, 60, 65]) * u.deg,
         np.array([0]) * u.km/u.s,
     )
     south_pars = FitPars(
         #np.array([300, 400, 500, 600]) * u.au,
         np.array([400]) * u.au,
         #np.array([1000, 1500, 2000, 2500, 3000]) * u.au,
-        np.array([3000]) * u.au,
+        np.array([2000, 2500, 3000]) * u.au,
         #np.array([500, 600]) * u.au,
         np.array([600]) * u.au,
         #np.array([40, 50, 60, 70]) * u.deg,
-        np.array([70]) * u.deg,
+        np.array([60, 65, 70, 75, 80]) * u.deg,
         #np.array([255, 260, 265, 270, 275]) * u.deg,
-        np.array([270]) * u.deg,
-        np.array([2]) * u.km/u.s,
+        np.array([265, 270, 275, 280]) * u.deg,
+        np.array([0, 2]) * u.km/u.s,
     )
     model_pars = ModelPars(
         position,
         distance,
         v_lsr,
         10 * u.Msun,
+        #8 * u.Msun,
         (90 - 65) * u.deg,
         (125 + 90) * u.deg,
         components={'north': north_pars, 'south': south_pars},
