@@ -55,7 +55,10 @@ line_transitions = {'CH3OH': ['4(2,3)-5(1,4)A,vt=0',       #spw0
                               ],
                      '(13)CH3OH': ['10(2,8)-9(3,7)++',
                                    '5(1,5)-4(1,4)++'],
-                     'CH3CN': ['12(3)-11(3)',
+                     'CH3CN': ['12(0)-11(0)',
+                               '12(1)-11(1)',
+                               '12(2)-11(2)',
+                               '12(3)-11(3)',
                                '12(4)-11(4)',
                                '12(8)-11(8)'],
                      '(13)CH3CN': ['13(3)-12(3)',
@@ -184,6 +187,7 @@ def moments(source,
             #molecules=['(13)CH3OH', 'CH3OH'],
             #molecules=['HC3N'],
             molecules=['CH3OH'],
+            #molecules=['CH3CN'],
             qns_mol=line_transitions,
             half_width=10):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
@@ -345,13 +349,14 @@ def cassis_to_fits(src, outdir, configs, figures, array, mol='CH3OH'):
     rebuild_map(flags + [str(maskfile), str(results)])
 
 def peak_maps(source,
-                outdir,
-                configs,
-                figures,
-                array,
-                molecules=['CH3OH'],
-                qns_mol=line_transitions,
-                half_width=10):
+              outdir,
+              configs,
+              figures,
+              array,
+              molecules=['CH3OH'],
+              #  qns_mol=line_transitions,
+              qns_mol={'CH3OH':['18(3,15)-17(4,14)A,vt=0']},
+              half_width=10):
     for mol in molecules:
         configs_with_mol = search_molecule(source, mol, array)
         processed = []
@@ -374,6 +379,7 @@ def peak_maps(source,
                          '--nsigma', '5',
                          '--win_halfwidth', f'{half_width}',
                          '--moments', '0', '1',
+                         '--nlinewidth', '2',
                          '--use_dask',
                          '--common_beam',
                         ]
@@ -407,9 +413,9 @@ if __name__ == '__main__':
         6: crop_line,
         7: peak_maps,
     }
-    skip = [2, 3, 4, 5, 6]
-    #array = 'c8'
-    array = 'concat'
+    skip = [1, 2, 4, 5, 6, 3]
+    array = 'c8'
+    #array = 'concat'
 
     # Read sources from command line
     #sources = ['IRAS_180891732', 'G336.01-0.82']
