@@ -369,9 +369,9 @@ def fit_streamer(data: ObsData, model: ModelPars, outdir: Path):
 
 if __name__ == '__main__':
     basedir = Path('/data/share/binary_project/')
-    results = basedir / 'results/G336.01-0.82/concat/CH3OH'
-    regions = basedir / 'configs/pvmaps/regions'
-    figures = results / 'streamer_models'
+    results = basedir / 'results/G336.01-0.82/c8/CH3OH'
+    regions = basedir / 'scripts/configs/pvmaps/regions'
+    figures = results / 'streamer_models_incl75_cb300'
     moment0 = results / 'CH3OH_18_3_15_-17_4_14_A_vt_0.subcube.moment0.fits'
     moment1 = results / 'CH3OH_18_3_15_-17_4_14_A_vt_0.subcube.moment1.fits'
     continuum = (basedir / 'G336.01/G336.01-0.82/final_data/config8' /
@@ -401,31 +401,32 @@ if __name__ == '__main__':
 
     # Model parameters
     north_pars = FitPars(
-        np.array([400, 500]) * u.au,
+        np.array([600]) * u.au,
         #np.array([1000, 1500, 2000, 2500, 3000]) * u.au,
-        #np.array([2500]) * u.au,
-        np.array([2000, 2500, 3000]) * u.au,
+        np.array([2000, 2500, 3000, 3500, 4000]) * u.au,
         np.array([600]) * u.au,
         #np.array([70, 75, 80]) * u.deg,
         #np.array([80]) * u.deg,
-        np.array([70, 75, 80, 85]) * u.deg,
+        np.array([65, 70, 75, 80, 85, 90]) * u.deg,
+        #np.array([10, 20, 30, 40, 50, 60, 70,  80, 90, 110, 120]) * u.deg,
         #np.array([50, 60, 70, 80]) * u.deg,
         #np.array([60]) * u.deg,
-        np.array([45, 50, 55, 60, 65]) * u.deg,
+        np.array([45, 50, 55, 60, 65, 70, 80]) * u.deg,
         np.array([0]) * u.km/u.s,
     )
     south_pars = FitPars(
-        #np.array([300, 400, 500, 600]) * u.au,
-        np.array([400]) * u.au,
-        #np.array([1000, 1500, 2000, 2500, 3000]) * u.au,
-        np.array([2000, 2500, 3000]) * u.au,
-        #np.array([500, 600]) * u.au,
         np.array([600]) * u.au,
+        #np.array([1000, 1500, 2000, 2500, 3000]) * u.au,
+        np.array([2000, 2500, 3000, 3500, 4000]) * u.au,
+        np.array([400]) * u.au,
         #np.array([40, 50, 60, 70]) * u.deg,
-        np.array([60, 65, 70, 75, 80]) * u.deg,
+        np.array([50, 55, 60, 65, 70, 75, 80, 85, 90]) * u.deg,
+        #np.array([10, 20, 30, 40, 50, 60, 70, 80, 90, 110, 120]) * u.deg,
         #np.array([255, 260, 265, 270, 275]) * u.deg,
-        np.array([265, 270, 275, 280]) * u.deg,
-        np.array([0, 2]) * u.km/u.s,
+        #np.array([265, 270, 275, 280]) * u.deg,
+        np.array([270, 275, 280, 285, 290, 295]) * u.deg,
+        #np.array([0, 2]) * u.km/u.s,
+        np.array([2]) * u.km/u.s,
     )
     model_pars = ModelPars(
         position,
@@ -433,7 +434,8 @@ if __name__ == '__main__':
         v_lsr,
         10 * u.Msun,
         #8 * u.Msun,
-        (90 - 65) * u.deg,
+        #(90 - 65) * u.deg,
+        (90 - 75) * u.deg,
         (125 + 90) * u.deg,
         components={'north': north_pars, 'south': south_pars},
         ranges={'north': (0, 2000, -53, -44),
