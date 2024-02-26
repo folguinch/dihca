@@ -3,7 +3,7 @@ from tile_plotter.plotter import plotter
 
 from common_paths import *
 
-array = 'concat'
+array = 'c8'
 config_dir = configs / 'plots' / 'papers'
 
 if __name__ == '__main__':
@@ -16,8 +16,9 @@ if __name__ == '__main__':
         5: 'cassis',
         6: 'toomreq',
         7: 'streamers',
+        8: 'temperature',
     }
-    skip = [1, 2, 3, 4, 5, 6]
+    skip = [4, 2, 3, 5, 6, 7, 8]
 
     # Read sources from command line
     sources = ['G336.01-0.82']
