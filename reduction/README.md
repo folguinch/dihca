@@ -5,25 +5,25 @@
 Measured values updated with the correct positions. For ALMA source, first line
 measurement in the non-pbcor image, second in pbcor one.
 
-Origin            |      RA       |      Dec      | Ref.
------------------ | ------------- | ------------- | ----
-MM1a              | 16h30m58.765s | -48d43m54.00s | 1
-                  | 16h30m58.768s | -48d43m54.05s | 
-MM1b              | 16h30m58.638s | -48d43m51.70s | 1
-                  | 16h30m58.649s | -48d43m51.45s |
-H2O - maser       | 16h30m58.730s | -48d43m51.20s | 2
-CH3OH - CII maser | 16h30m58.670s | -48d43m50.70s | 3
-CH3OH - CII maser | 16h30m58.790s | -48d43m53.40s | 3
-ALMA 1            | 16h30m58.761s | -48d43m54.01s | 
-                  | 16h30m58.761s | -48d43m54.01s |
-ALMA 2            | 16h30m58.703s | -48d43m52.60s |
-                  | 16h30m58.703s | -48d43m52.60s |
-ALMA 3            | 16h30m58.631s | -48d43m51.28s |
-                  | 16h30m58.631s | -48d43m51.28s |
-ALMA 4            | 16h30m58.676s | -48d43m51.78s |
-                  | 16h30m58.676s | -48d43m51.78s |
-ALMA 5            | 16h30m58.891s | -48d43m55.16s |
-                  | 16h30m58.889s | -48d43m55.18s |
+|Origin            |      RA       |      Dec      | Ref.|
+|----------------- | ------------- | ------------- | ----|
+|MM1a              | 16h30m58.765s | -48d43m54.00s | 1   |
+|                  | 16h30m58.768s | -48d43m54.05s |     |
+|MM1b              | 16h30m58.638s | -48d43m51.70s | 1   |
+|                  | 16h30m58.649s | -48d43m51.45s |     |
+|H2O - maser       | 16h30m58.730s | -48d43m51.20s | 2   | 
+|CH3OH - CII maser | 16h30m58.670s | -48d43m50.70s | 3   | 
+|CH3OH - CII maser | 16h30m58.790s | -48d43m53.40s | 3   | 
+|ALMA 1            | 16h30m58.761s | -48d43m54.01s |     |
+|                  | 16h30m58.761s | -48d43m54.01s |     |
+|ALMA 2            | 16h30m58.703s | -48d43m52.60s |     |
+|                  | 16h30m58.703s | -48d43m52.60s |     |
+|ALMA 3            | 16h30m58.631s | -48d43m51.28s |     |
+|                  | 16h30m58.631s | -48d43m51.28s |     |
+|ALMA 4            | 16h30m58.676s | -48d43m51.78s |     |
+|                  | 16h30m58.676s | -48d43m51.78s |     |
+|ALMA 5            | 16h30m58.891s | -48d43m55.16s |     |
+|                  | 16h30m58.889s | -48d43m55.18s |     |
 
 Refs.:
 1. Radio sources from Avison et al. (2015)
@@ -478,9 +478,9 @@ Original locations (in run1):
 
 - to extract spectra:
 
-"""bash
+```bash
 python ~/python/line_little_helper/scripts/spectrum_helper.py yclean_config8/G336.01-0.82_spw0_0_1000/autoG336.01-0.82_spw0.tc_final.image.fits yclean_config8/G336.01-0.82_spw0_2000_2800/autoG336.01-0.82_spw0.tc_final.image.fits --mask_from ../../results/G336.01-0.82/CH3OH/spectra/moment0_map_18-17.fits.subcube.moment0.fits --vlsr "-47.2" "km/s" --savemask spectra_mask_3sigma.fits --outdir ../../results/G336.01-0.82/CH3OH/spectra/ --rest --nsigma 3 --box 2527 2566 2644 2646 --rms 0.0025242791177874676 Jy/beam
-"""
+```
 
 ---
 
