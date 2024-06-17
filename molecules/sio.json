@@ -1,0 +1,15 @@
+{
+    "name": "SiO",
+    "transitions": [
+        {
+            "species": "SiO v=0",
+            "qns": "5-4",
+            "restfreq": 217.10498,
+            "restfreq_unit": "GHz",
+            "logaij": -3.28429,
+            "obsfreq": null,
+            "eup": 31.0,
+            "eup_unit": "K"
+        }
+    ]
+}

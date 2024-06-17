@@ -1,0 +1,15 @@
+{
+    "name": "SO",
+    "transitions": [
+        {
+            "species": "SO 3Sigma v=1",
+            "qns": "6(5)-5(4)",
+            "restfreq": 218.3238577,
+            "restfreq_unit": "GHz",
+            "logaij": -3.87561,
+            "obsfreq": null,
+            "eup": 1634.0,
+            "eup_unit": "K"
+        }
+    ]
+}
