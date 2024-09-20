@@ -19,7 +19,7 @@ from tile_plotter.plotter import plotter
 from common_paths import *
 
 # Recommended line lists
-line_lists = {
+LINE_LISTS = {
     '(13)CO': 'JPL',
     'H2CO': 'JPL',
     'SiO': 'JPL',
@@ -37,48 +37,58 @@ line_lists = {
 }
 
 # Molecules and transitions of interest
-line_transitions = {'CH3OH': ['4(2,3)-5(1,4)A,vt=0',       #spw0
-                              '5(4,2)-6(3,3)E,vt=0',
-                              '18(3,15)-17(4,14)A,vt=0',
-                              '10(2,9)-9(3,6)A,vt=0',      #spw1
-                              '10(2,8)-9(3,7)A,vt=0',
-                              '18(3,16)-17(4,13)A,vt=0',
-                              '4(-2,3)-3(-1,2)E,vt=0',      #spw2
-                              '5(-1,4)-4(-2,3)E,vt=0',
-                              '20(-1,19)-20(-0,20)E,vt=0',
-                              '8(-0,8)-7(-1,6)E,vt=0',     #spw3
-                              '23(-5,18)-22(-6,17)E,vt=0',
-                              '25(-3,23)-24(-4,20)E,vt=0',
-                              '6(1,5)-7(2,6)--,vt=1',      # other
-                              '13(3,10)-14(4,10)A,vt=2',
-                              '34(-13,22)-33(-11,22)E,vt=0-vt=1',
-                              ],
-                     '(13)CH3OH': ['10(2,8)-9(3,7)++',
-                                   '5(1,5)-4(1,4)++'],
-                     'CH3CN': ['12(0)-11(0)',
-                               '12(1)-11(1)',
-                               '12(2)-11(2)',
-                               '12(3)-11(3)',
-                               '12(4)-11(4)',
-                               '12(8)-11(8)'],
-                     '(13)CH3CN': ['13(3)-12(3)',
-                                   '13(4)-12(4)'],
-                     'CH3CHO': ['2(2,0)-3(1,3)A++,vt=2'],
-                     'HNCO': ['28(1,28)-29(0,29)',
-                              '10(3,8)-9(3,7)',
-                              '10(0,10)-9(0,9)'],
-                     'CH3OCHO': ['20(0,20)-19(0,19)A',
-                                 '32(9,24)-32(8,25)E',
-                                 '48(14,35)-47(15,32)E'],
-                     'SO2': ['59(14,46)-60(13,47)',
-                             '28(3,25)-28(2,26)',
-                             '99(9,91)-98(10,88)',
-                             '94(21,73)-95(20,76)'],
-                     'HC3N': ['J=24-23,l=0',
-                              'J=24-23,l=2e',
-                              'J=24-23,l=1f'],
-                     'NH2CHO': ['11(2,10)-10(2,9)'],
-                     }
+LINE_TRANSITIONS = {
+    'CH3OH': ['4(2,3)-5(1,4)A,vt=0',       #spw0
+              '5(4,2)-6(3,3)E,vt=0',
+              '18(3,15)-17(4,14)A,vt=0',
+              '10(2,9)-9(3,6)A,vt=0',      #spw1
+              '10(2,8)-9(3,7)A,vt=0',
+              '18(3,16)-17(4,13)A,vt=0',
+              '4(-2,3)-3(-1,2)E,vt=0',      #spw2
+              '5(-1,4)-4(-2,3)E,vt=0',
+              '20(-1,19)-20(-0,20)E,vt=0',
+              '8(-0,8)-7(-1,6)E,vt=0',     #spw3
+              '23(-5,18)-22(-6,17)E,vt=0',
+              '25(-3,23)-24(-4,20)E,vt=0',
+              '6(1,5)-7(2,6)--,vt=1',      # other
+              '13(3,10)-14(4,10)A,vt=2',
+              '34(-13,22)-33(-11,22)E,vt=0-vt=1',
+              ],
+    '(13)CH3OH': [#'10(2,8)-9(3,7)++',
+                  '5(1,5)-4(1,4)++'],
+    'CH3CN': [#'12(0)-11(0)',
+              #'12(1)-11(1)',
+              '12(2)-11(2)',
+              '12(3)-11(3)',
+              '12(4)-11(4)',
+              '12(8)-11(8)'],
+    '(13)CH3CN': ['13(3)-12(3)',
+                  '13(4)-12(4)'],
+    'CH3CHO': ['2(2,0)-3(1,3)A++,vt=2'],
+    'HNCO': ['28(1,28)-29(0,29)',
+             '10(3,8)-9(3,7)',
+             '10(0,10)-9(0,9)'],
+    'CH3OCHO': ['20(0,20)-19(0,19)A',
+                '32(9,24)-32(8,25)E',
+                '48(14,35)-47(15,32)E'],
+    'SO2': ['59(14,46)-60(13,47)',
+            '28(3,25)-28(2,26)',
+            '99(9,91)-98(10,88)',
+            '94(21,73)-95(20,76)'],
+    'HC3N': ['J=24-23,l=0',
+             'J=24-23,l=2e',
+             'J=24-23,l=1f'],
+    'NH2CHO': ['11(2,10)-10(2,9)'],
+}
+
+# Saved molecules
+MOL_DIR = Path('/data/share/binary_project/scripts/molecules')
+SAVED_MOLS = {
+    'CH3OH': MOL_DIR / 'ch3oh.json',
+    'CH3CN': MOL_DIR / 'ch3cn.json',
+    '(13)CH3OH': MOL_DIR / '13ch3oh.json',
+    '(13)CH3CN': MOL_DIR / '13ch3cn.json',
+}
 
 def search_molecule(source, molecule, array):
     data = []
@@ -128,7 +138,7 @@ def crop_line(source,
               figures,
               array,
               molecules=['CH3OH'],
-              qns_mol = line_transitions,
+              qns_mol = LINE_TRANSITIONS,
               half_width=30):
     for mol in molecules:
         configs_with_mol = search_molecule(source, mol, array)
@@ -186,12 +196,12 @@ def moments(source,
             #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
             #molecules=['(13)CH3OH', 'CH3OH'],
             #molecules=['HC3N'],
-            molecules=['CH3OH'],
-            #molecules=['CH3CN'],
-            qns_mol=line_transitions,
+            molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
+            qns_mol=LINE_TRANSITIONS,
             half_width=10):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
     for mol in molecules:
+        # Find what molecules are in the source
         configs_with_mol = search_molecule(source, mol, array)
         processed = []
         norm_mol = mol.replace('(', '').replace(')', '')
@@ -211,12 +221,14 @@ def moments(source,
                 # Moment flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
                          f'{source.vlsr.unit}'.replace(' ', ''),
-                         '--line_lists', line_lists.get(mol, 'CDMS'),
+                         '--line_lists', LINE_LISTS.get(mol, 'CDMS'),
                          '--molecule', mol,
                          '--qns', qns,
                          '--nsigma', '5',
                          '--win_halfwidth', f'{half_width}',
                         ]
+                if mol in SAVED_MOLS:
+                    flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
                 if 'rms' in src_cfg:
                     flags += ['--rms'] + src_cfg['rms'].split()
                 
@@ -399,9 +411,9 @@ def peak_maps(source,
 
 if __name__ == '__main__':
     ## Constants
-    #results = Path('/data/share/binary_project/results')
-    #configs = Path('/data/share/binary_project/configs')
-    #figures = Path('/data/share/binary_project/figures')
+    results = Path('/data/share/binary_project/results')
+    configs = Path('/data/share/binary_project/scripts/configs')
+    figures = Path('/data/share/binary_project/figures')
 
     # Steps
     steps = {
@@ -413,13 +425,14 @@ if __name__ == '__main__':
         6: crop_line,
         7: peak_maps,
     }
-    skip = [1, 2, 4, 5, 6, 3]
+    skip = [2, 3, 4, 5, 6, 7]
     array = 'c8'
     #array = 'concat'
 
     # Read sources from command line
     #sources = ['IRAS_180891732', 'G336.01-0.82']
-    sources = ['G336.01-0.82']
+    sources = ['W33A', 'G333.23-0.06', 'IRAS_180891732', 'G34.43+0.24',
+               'G35.20-0.74_N', 'G35.03+0.35_A']
 
     # Iterate over source config files
     iterover = (configs / f'{source}.cfg' for source in sources)
