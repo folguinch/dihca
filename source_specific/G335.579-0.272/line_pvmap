@@ -1,0 +1,64 @@
+#!/bin/bash
+#function get_pvmap () {
+#    local script="python ~/Python/scripts/get_pvmaps.py"
+#    $script $1 $2 $3
+#}
+
+#######################################
+# Calculate the a position velocity map
+# Globals:
+#   SCRIPTS
+#   CFGS
+#   FIELD
+#   SOURCE
+# Arguments:
+#   Source name
+#   Results directory
+#   Additional arguments correspond to config sections for the pvs
+#######################################
+function get_pv() {
+  local script="${SCRIPTS}/get_pvmaps.py"
+  local src="$1"
+  local rslt="$2"
+  shift 2
+  local -a flags
+  local -a line_flags
+  flags=( --source "${CFGS}/${src,,}.cfg" 
+          --pvconfig "${CFGS}/${src,,}_pv.cfg" )
+  
+  # Run
+  if [[ ! -d "${rslt}" ]]; then
+    mkdir "${rslt}"
+  fi
+  echo "PV map for: $src"
+  for line in "$@"; do
+    echo "Line: $line"
+    line_flags=( --config_section "${line}" --output
+                 "${rslt}/${FIELD}.${src,,}.${line}.pvmap.fits" )
+    $script "${flags[@]}" "${line_flags[@]}"
+  done
+}
+
+#######################################
+# Plot pv maps
+# Globals:
+#   PLOTTER
+#   FIGS
+# Arguments:
+#   The pvmap file name
+#   The plot configuration file
+#######################################
+function plot_pv() {
+  local -a preflags
+  local -a postflags
+  local figname
+  local pvmap="$1"
+  preflags=( --png "$2" )
+  postflags=( --section "pvmap" --selflevels )
+  
+  figname="${FIGS}/$(basename $pvmap)"
+  figname="${figname/.fits/.pdf}"
+  echo "Plotting ${pvmap}"
+  $PLOTTER "${preflags[@]}" "${figname}" plotpvmaps "${postflags[@]}" "${pvmap}"
+}
+
