@@ -15,7 +15,6 @@ from line_little_helper.symmetric_moments import symmetric_moments
 from line_little_helper.utils import normalize_qns
 from tile_plotter.plotter import plotter
 
-
 from common_paths import *
 
 # Recommended line lists
@@ -82,7 +81,7 @@ LINE_TRANSITIONS = {
 }
 
 # Saved molecules
-MOL_DIR = Path('/data/share/binary_project/scripts/molecules')
+MOL_DIR = Path('./molecules')
 SAVED_MOLS = {
     'CH3OH': MOL_DIR / 'ch3oh.json',
     'CH3CN': MOL_DIR / 'ch3cn.json',
@@ -195,8 +194,9 @@ def moments(source,
             #molecules=['CH3CN', '(13)CH3CN', '(13)CH3OH', 'CH3CHO', 'HNCO',
             #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
             #molecules=['(13)CH3OH', 'CH3OH'],
+            molecules=['CH3OH'],
             #molecules=['HC3N'],
-            molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
+            #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
             qns_mol=LINE_TRANSITIONS,
             half_width=10):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
@@ -410,11 +410,6 @@ def peak_maps(source,
                     continue
 
 if __name__ == '__main__':
-    ## Constants
-    results = Path('/data/share/binary_project/results')
-    configs = Path('/data/share/binary_project/scripts/configs')
-    figures = Path('/data/share/binary_project/figures')
-
     # Steps
     steps = {
         1: moments,
@@ -425,7 +420,7 @@ if __name__ == '__main__':
         6: crop_line,
         7: peak_maps,
     }
-    skip = [2, 3, 4, 5, 6, 7]
+    skip = [2, 3, 4, 5, 6]
     array = 'c8'
     #array = 'concat'
 
