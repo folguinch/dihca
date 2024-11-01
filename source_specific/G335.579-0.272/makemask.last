@@ -1,0 +1,9 @@
+taskname           = "makemask"
+mode               =  "copy"
+inpimage           =  "../results_final/concat/CH3OH/spectra/lte_fit/nmol_1_map.fits"
+inpmask            =  "../results_final/concat/G335.579-0.272.alma1bow.130sigma.crtf"
+output             =  "../results_final/concat/G335.579-0.272.alma1bow.130sigma.3600x3600.mask"
+overwrite          =  False
+inpfreqs           =  []
+outfreqs           =  []
+#makemask(mode="copy",inpimage="../results_final/concat/CH3OH/spectra/lte_fit/nmol_1_map.fits",inpmask="../results_final/concat/G335.579-0.272.alma1bow.130sigma.crtf",output="../results_final/concat/G335.579-0.272.alma1bow.130sigma.3600x3600.mask",overwrite=False,inpfreqs=[],outfreqs=[])

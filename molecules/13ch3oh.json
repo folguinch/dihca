@@ -1,0 +1,15 @@
+{
+    "name": "(13)CH3OH",
+    "transitions": [
+        {
+            "species": "(13)CH3OH vt=0",
+            "qns": "5(1,5)-4(1,4)++",
+            "restfreq": 234.01158,
+            "restfreq_unit": "GHz",
+            "logaij": -4.27826,
+            "obsfreq": null,
+            "eup": 48.25083,
+            "eup_unit": "K"
+        }
+    ]
+}

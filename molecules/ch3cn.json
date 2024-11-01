@@ -1,0 +1,45 @@
+{
+    "name": "CH3CN",
+    "transitions": [
+        {
+            "species": "CH3CN v=0",
+            "qns": "12(2)-11(2)",
+            "restfreq": 220.7302607,
+            "restfreq_unit": "GHz",
+            "logaij": -3.20818,
+            "obsfreq": null,
+            "eup": 97.44229,
+            "eup_unit": "K"
+        },
+        {
+            "species": "CH3CN v=0",
+            "qns": "12(3)-11(3)",
+            "restfreq": 220.7090165,
+            "restfreq_unit": "GHz",
+            "logaij": -3.22415,
+            "obsfreq": null,
+            "eup": 133.15712,
+            "eup_unit": "K"
+        },
+        {
+            "species": "CH3CN v=0",
+            "qns": "12(4)-11(4)",
+            "restfreq": 220.6792869,
+            "restfreq_unit": "GHz",
+            "logaij": -3.24741,
+            "obsfreq": null,
+            "eup": 183.14629,
+            "eup_unit": "K"
+        },
+        {
+            "species": "CH3CN v=0",
+            "qns": "12(8)-11(8)",
+            "restfreq": 220.4758072,
+            "restfreq_unit": "GHz",
+            "logaij": -3.45279,
+            "obsfreq": null,
+            "eup": 525.57238,
+            "eup_unit": "K"
+        }
+    ]
+}

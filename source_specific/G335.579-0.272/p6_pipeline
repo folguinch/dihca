@@ -1,0 +1,935 @@
+#!/usr/bin/bash
+#set +e
+################################################################################
+################################################################################
+# Globals                                                                      #
+################################################################################
+################################################################################
+readonly FIELD="G335.579-0.272"
+readonly SOURCE="ALMA1"
+readonly ARRAY="concat"
+#readonly ARRAY="config8"
+readonly FIGS="../figures/P6/"
+readonly CLEAN="../yclean_${ARRAY}"
+readonly IMGS="../final_data/${ARRAY}"
+readonly SBCB="${IMGS}/subcubes"
+readonly CFGS="../configs/P6"
+readonly RSLT="../results_final/${ARRAY}"
+readonly DIRTY="../dirty"
+readonly PAPER="${HOME}/Documents/Papers/P6"
+readonly PLOTTER="python ${HOME}/Python/plotter/plotter.py"
+readonly SCRIPTS="python ${HOME}/Python/scripts"
+readonly -a VLSR=( --vlsr "-46.9" "km/s" )
+readonly -a DISTANCE=( -d "3.25" "kpc" )
+readonly -a FREQ=( --nu "226.2" "GHz" )
+readonly SEP="########################################"
+source analysis_pipe
+source line_pvmap
+
+################################################################################
+################################################################################
+# Functions                                                                    #
+################################################################################
+################################################################################
+
+#######################################
+# Plot continuum map
+# Globals:
+#   PLOTTER
+#   CFGS
+#   FIGS
+#   FIELD
+#   SOURCE
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_continuum() {
+  local preflag="--png"
+  local suffix="config8.selfcal.cont_avg.roubust0.5.image"
+  local config="${CFGS}/${SOURCE,,}_figure_continuum.cfg"
+  local figure="${FIGS}/${FIELD}.${suffix}.${SOURCE}.pdf"
+  $PLOTTER "${preflag}" "${config}" "${figure}" multiplot
+  copy_to_paper $figure $1
+}
+
+#######################################
+# Plot continuum config8 and 8 maps
+# Globals:
+#   PLOTTER
+#   CFGS
+#   FIGS
+#   FIELD
+#   SOURCE
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_continuum_config5() {
+  local preflag="--png"
+  local suffix="config5.config8.cont_avg.roubust0.5.image"
+  local config="${CFGS}/${SOURCE,,}_figure_continuum_config5.cfg"
+  local figure="${FIGS}/${FIELD}.${suffix}.${SOURCE}.pdf"
+  $PLOTTER "${preflag}" "${config}" "${figure}" multiplot
+  copy_to_paper $figure $1
+}
+
+#######################################
+# Plot spectra at different positions
+# Globals:
+#   PLOTTER
+#   CFGS
+#   FIGS
+#   FIELD
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_spectrum_at_position() {
+    local preflag="--png"
+    local suffix="${ARRAY}.${SOURCE,,}.spectrum.continuum"
+    local config="${CFGS}/multiplot_spectrum_at_positions.cfg"
+    local figure="${FIGS}/${FIELD}.${suffix}.pdf"
+    $PLOTTER "${preflag}" "${config}" "${figure}" multiplot
+    copy_to_paper "${figure}" "$1"
+}
+
+#######################################
+# Calculate and plot CH2CHCN moments
+# Globals:
+#   HOSTNAME
+#   CFGS
+#   SOURCE
+#   FIELD
+#   ARRAY
+#   FIGS
+#   PLOTTER
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function vinyl_cyanide_moments() {
+  local molec="CH2CHCN"
+  local qns="23(15,8)-22(15,7),F=22-21"
+  local width=10
+  local image
+  local -a flags
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    local preflag="--png"
+    local config="${CFGS}/${SOURCE,,}_vinyl_cyanide_moments.cfg"
+    local figure="${FIELD}_${molec}_${qns}_hwidth${width}.moments.pdf"
+
+    # Figure name
+    if [[ "${ARRAY}" == "concat" ]]; then
+      figure="${FIGS}/${figure}"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      figure="${FIGS}/${ARRAY}/${figure}"
+    fi
+
+    # Plot
+    if [[ -e $config ]]; then
+      ${PLOTTER} "${preflag}" "${config}" "${figure}" multiplot
+    else
+      echo "${config} does not exits" >&2
+      exit 1
+    fi
+
+    # Copy
+    if [[ -n "$1" ]]; then
+      copy_to_paper "${figure}" "$1"
+    fi
+  elif [[ "$HOSTNAME" == "maat" ]]; then
+    if [[ "${ARRAY}" == "concat" ]]; then
+      image="../yclean_${ARRAY}/${FIELD}_spw3_830-1150"
+      image="${image}/auto${FIELD}_spw0.12m.tc_final.fits"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      image="../yclean_${ARRAY}/${FIELD}_spw3_10"
+      image="${image}/auto${FIELD}_spw3_10.12m.tc_final.fits"
+    fi
+    flags=( "${molec}" "${qns}" "$width" "${image}" )
+    symmetric_moments "chan_halfwidth" "${flags[@]}"
+  else
+    echo "Unknown hostname" >&2
+    exit 1
+  fi
+}
+
+#######################################
+# Calculate and plot CH3OH moments
+# Globals:
+#   HOSTNAME
+#   CFGS
+#   SOURCE
+#   FIELD
+#   ARRAY
+#   FIGS
+#   PLOTTER
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function methanol_moments() {
+  local molec="CH3OH"
+  local qns="25(3)-24(4)E1vt=0"
+  #local qns="23(5)-22(6)E1vt=0"
+  local width=10
+  local image
+  local -a flags
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    local preflag="--png"
+    local config="${CFGS}/${SOURCE,,}_methanol_moments.cfg"
+    local figure="${FIELD}_${molec}_${qns}_hwidth${width}.moments.pdf"
+
+    # Figure name
+    if [[ "${ARRAY}" == "concat" ]]; then
+      figure="${FIGS}/${figure}"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      figure="${FIGS}/${ARRAY}/${figure}"
+    fi
+
+    # Plot
+    if [[ -e $config ]]; then
+      ${PLOTTER} "${preflag}" "${config}" "${figure}" multiplot
+    else
+      echo "${config} does not exits" >&2
+      exit 1
+    fi
+
+    # Copy
+    if [[ -n "$1" && "${ARRAY}" == "concat" ]]; then
+      copy_to_paper "${figure}" "$1"
+    fi
+  elif [[ "$HOSTNAME" == "maat" ]]; then
+    if [[ "${ARRAY}" == "concat" ]]; then
+      image="../yclean_${ARRAY}/${FIELD}_spw3_1730-2050"
+      image="${image}/auto${FIELD}_spw3.12m.tc_final.fits"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      image="../yclean_${ARRAY}/${FIELD}_spw3_7"
+      image="${image}/auto${FIELD}_spw3_7.12m.tc_final.fits"
+    fi
+    flags=( "${molec}" "${qns}" "$width" "${image}" )
+    symmetric_moments "chan_halfwidth" "${flags[@]}"
+  else
+    echo "Unknown hostname" >&2
+    exit 1
+  fi
+}
+
+#######################################
+# Calculate and plot CH3OH moments
+# Globals:
+#   HOSTNAME
+#   CFGS
+#   SOURCE
+#   FIELD
+#   ARRAY
+#   FIGS
+#   PLOTTER
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function hdco_moments() {
+  local molec="HDCO"
+  local width=10
+  local image
+  local -a flags
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    local preflag="--png"
+    local config="${CFGS}/${SOURCE,,}_${molec,,}_moments.cfg"
+    local figure="${FIELD}_${molec}_hwidth${width}.moments.pdf"
+
+    # Figure name
+    if [[ "${ARRAY}" == "concat" ]]; then
+      figure="${FIGS}/${figure}"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      figure="${FIGS}/${ARRAY}/${figure}"
+    fi
+
+    # Plot
+    if [[ -e $config ]]; then
+      ${PLOTTER} "${preflag}" "${config}" "${figure}" multiplot
+    else
+      echo "${config} does not exits" >&2
+      exit 1
+    fi
+
+    # Copy
+    if [[ -n "$1" && "${ARRAY}" == "concat" ]]; then
+      copy_to_paper "${figure}" "$1"
+    fi
+  elif [[ "$HOSTNAME" == "maat" ]]; then
+    if [[ "${ARRAY}" == "concat" ]]; then
+      image="../yclean_${ARRAY}/${FIELD}_spw3_1730-2050"
+      image="${image}/auto${FIELD}_spw3.12m.tc_final.fits"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      image="../yclean_${ARRAY}/${FIELD}_spw3_6"
+      image="${image}/auto${FIELD}_spw3_6.12m.tc_final.fits"
+    fi
+    flags=( "${molec}" "none" "$width" "${image}" )
+    symmetric_moments "chan_halfwidth" "${flags[@]}"
+  else
+    echo "Unknown hostname" >&2
+    exit 1
+  fi
+}
+
+#######################################
+# SiO and SO split moments
+# Globals:
+#   HOSTNAME
+#   FIELD
+#   CLEAN
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_split_moments() {
+  local fitsfile="auto${FIELD}_spw0.12m.tc_final.fits"
+  local molec
+  local cube
+  local config
+  local figure
+  local -a molecs=( "SiO" "SO" )
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    config="${CFGS}/multiplot_split_moments.cfg"
+    figure="${FIGS}/split_moments_sio_so.pdf"
+    $PLOTTER --png $config $figure multiplot
+    copy_to_paper "${figure}" "$1"
+  elif [[ "$HOSTNAME" == "maat" ]]; then
+    for molec in "${molecs[@]}"; do
+      if [[ "${molec}" == "SiO" ]]; then
+        cube="${CLEAN}/${FIELD}_SiO/${fitsfile}"
+      else
+        cube="${CLEAN}/${FIELD}_spw3_1730-2050/${fitsfile}"
+      fi
+      moving_moments "${molec}" 5 6 80 "${cube}"
+    done
+  fi
+}
+
+#######################################
+# SiO rolling moments
+# Globals:
+#   CFGS
+#   FIGS
+#   HOSTNAME
+#   PLOTTER
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_sio_rolling() {
+  local config="${CFGS}/multiplot_sio_rolling.cfg"
+  local figure="${FIGS}/rolling_moments_sio.pdf"
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    ${PLOTTER} --png "${config}" "${figure}" multiplot
+    copy_to_paper "${figure}" "$1"
+  fi
+}
+
+#######################################
+# Generate maps and plot CASSIS results
+# Globals:
+#   HOSTNAME
+#   HOME
+#   RSLT
+#   CFGS
+#   SOURCE
+#   FIELD
+#   ARRAY
+#   FIGS
+#   PLOTTER
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function methanol_cassis() {
+  local cmd="python ${HOME}/python_devel/line_little_helper/cassis_rebuild_map.py"
+  local lte_dir="${RSLT}/CH3OH/spectra/lte_fit/"
+  local mask="${RSLT}/CH3OH/spectra/selected_pixels_ch3oh.fits"
+  local molec="CH3OH"
+  local image
+  local -a flags
+  local -a quant
+
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    local preflag="--png"
+    local config="${CFGS}/${SOURCE,,}_methanol_cassis.cfg"
+    local figure="${FIELD}_${molec}_cassis.pdf"
+
+    # Figure name
+    if [[ "${ARRAY}" == "concat" ]]; then
+      figure="${FIGS}/${figure}"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      figure="${FIGS}/${ARRAY}/${figure}"
+    fi
+
+    # Plot
+    if [[ -e $config ]]; then
+      ${PLOTTER} "${preflag}" "${config}" "${figure}" multiplot
+    else
+      echo "${config} does not exits" >&2
+      exit 1
+    fi
+
+    # Copy
+    if [[ -n "$1" ]]; then
+      copy_to_paper "${figure}" "$1"
+    fi
+  elif [[ "$HOSTNAME" == "maat" ]]; then
+    quant=( "tex" "nmol" "fwhm" "vlsr" )
+    for quan in "${quant[@]}"; do
+      flags=( -k "${quan}" )
+      $cmd "${mask}" "${lte_dir}" "${flags[@]}"
+    done
+  else
+    echo "Unknown hostname" >&2
+    exit 1
+  fi
+}
+
+#######################################
+# Generate maps and plot CASSIS result errors
+# Globals:
+#   HOSTNAME
+#   HOME
+#   RSLT
+#   CFGS
+#   SOURCE
+#   FIELD
+#   ARRAY
+#   FIGS
+#   PLOTTER
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function methanol_cassis_error() {
+  local cmd="python ${HOME}/python_devel/line_little_helper/cassis_rebuild_map.py"
+  local lte_dir="${RSLT}/CH3OH/spectra/lte_fit/"
+  local mask="${RSLT}/CH3OH/spectra/selected_pixels_ch3oh.fits"
+  local molec="CH3OH"
+  local image
+  local -a flags
+  local -a quant
+
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    local preflag="--png"
+    local config="${CFGS}/${SOURCE,,}_methanol_cassis_error.cfg"
+    local figure="${FIELD}_${molec}_cassis_errors.pdf"
+
+    # Figure name
+    if [[ "${ARRAY}" == "concat" ]]; then
+      figure="${FIGS}/${figure}"
+    elif [[ "${ARRAY}" == "config8" ]]; then
+      figure="${FIGS}/${ARRAY}/${figure}"
+    fi
+
+    # Plot
+    if [[ -e $config ]]; then
+      ${PLOTTER} "${preflag}" "${config}" "${figure}" multiplot
+    else
+      echo "${config} does not exits" >&2
+      exit 1
+    fi
+
+    # Copy
+    if [[ -n "$1" ]]; then
+      copy_to_paper "${figure}" "$1"
+    fi
+  elif [[ "$HOSTNAME" == "maat" ]]; then
+    quant=( "tex" "nmol" "fwhm" "vlsr" )
+    for quan in "${quant[@]}"; do
+      flags=( -e -x -k "${quan}" )
+      $cmd "${mask}" "${lte_dir}" "${flags[@]}"
+    done
+  else
+    echo "Unknown hostname" >&2
+    exit 1
+  fi
+}
+
+#######################################
+# Plot inverse p-Cygni lines
+# Globals:
+#   CFGS
+#   FIGS
+#   SOURCE
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_pcyg_profile() {
+  local preflag="--png"
+  local config="${CFGS}/alma1a_13co_ch3cn_line.cfg"
+  local figure="${FIGS}/${SOURCE,,}_13co_ch3cn_line.pdf"
+  $PLOTTER $preflag $config $figure multiplot
+  # Copy
+  if [[ -n "$1" ]]; then
+    copy_to_paper "${figure}" "$1"
+  fi
+}
+
+#######################################
+# Fit and plot inverse p-Cygni lines
+# Globals:
+#   FIGS
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function pcyg_profile_fit() {
+  local figure="${FIGS}/inverse_pcygni_gaussfit.pdf"
+  python fit_inverse_pcygni.py
+  # Copy
+  if [[ -n "$1" ]]; then
+    copy_to_paper "${figure}" "$1"
+  fi
+}
+
+#######################################
+# Plot the radio SED with fit
+# Globals:
+#   FIGS
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_radio_sed() {
+  local figure="${FIGS}/alma1_sed.pdf"
+  python spectral_indices.py
+  copy_to_paper "${figure}" "$1"
+}
+
+#######################################
+# Calculate and plot Halpha  moments
+# Globals:
+#   HOSTNAME
+#   CFGS
+#   SOURCE
+#   FIELD
+#   ARRAY
+#   FIGS
+#   PLOTTER
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function recomb_moments() {
+  local molec="Hα"
+  local width=5
+  local image
+  local -a flags
+  if [[ "${HOSTNAME}" == "seth" ]]; then
+    local preflag="--png"
+    local config="${CFGS}/${SOURCE,,}_halpha_moments.cfg"
+    local figure="${FIELD}_${molec}_hwidth${width}.moments.pdf"
+
+    # Figure name
+    figure="${FIGS}/${figure}"
+
+    # Plot
+    if [[ -e $config ]]; then
+      ${PLOTTER} "${preflag}" "${config}" "${figure}" multiplot
+    else
+      echo "${config} does not exits" >&2
+      exit 1
+    fi
+
+    # Copy
+    if [[ -n "$1" ]]; then
+      copy_to_paper "${figure}" "$1"
+    fi
+  elif [[ "$HOSTNAME" == "maat" ]]; then
+    image="../yclean_${ARRAY}/${FIELD}_spw1_Halpha"
+    image="${image}/auto${FIELD}_spw0.12m.tc_final.fits"
+    flags=( "${molec}" "none" "$width" "${image}" )
+    symmetric_moments "chan_halfwidth" "${flags[@]}"
+  else
+    echo "Unknown hostname" >&2
+    exit 1
+  fi
+}
+
+#######################################
+# Plot the methanol spectra at peaks
+# Globals:
+#   FIGS
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function plot_ch3oh_spectra() {
+  local figure="${FIGS}/ch3oh_spectra_fit.pdf"
+  python p6_spectra_fit.py
+  copy_to_paper "${figure}" "$1"
+}
+
+#######################################
+# Calculate and plot the vinyl cyanide pv maps
+# Globals:
+#   FIGS
+#   RSLTS
+# Arguments:
+#   Index of the paper figure.
+#######################################
+function vinyl_cyanide_pvmaps() {
+  local lines=( "CH2CHCN_23_15_8-22_15_7_${ARRAY}" )
+  local source="alma1a"
+  local fig_config="${CFGS}/alma1a_${ARRAY}_ch2chcn_pv_150deg.cfg"
+  local pvmap figure
+  
+  # Calculate pv
+  # Note the direction of the y (vel) axis changes from concat to config8 due to
+  # the concatenation
+  #get_pv $source "${RSLT}/pvmaps" "${lines[@]}"
+
+  # Plot pv
+  pvmap="${RSLT}/pvmaps/G335.579-0.272.alma1a.CH2CHCN_23_15_8-22_15_7.pvmap_PA150.fits"
+  plot_pv "${pvmap}" "${fig_config}"
+  figure="${FIGS}/$(basename $pvmap)"
+  figure="${figure/.fits/.pdf}"
+
+  copy_to_paper "${figure}" "$1"
+}
+
+# Plot CH3CN K=8 moment maps
+function plot_ch3cn_moments () {
+    local kval="8"
+    local linetags="ch3cn_k${kval}"
+    local suffix="${ARRAY}.${linetags}"
+    local cubename="$IMGS/${FIELD}.${ARRAY}.spw3.partial11.cube.image.fits"
+    local chanwidth="25"
+    local freq="220.47580720"
+    local fluxlimit="0"
+
+    # Calculate moments
+    local outname="${IMGS}/subcubes/${FIELD}.${suffix}.${SOURCE}"
+    local aux="${chanwidth} $freq ${VLSR} $fluxlimit"
+    aux="$aux $cubename $outname 0 1 2"
+    echo "$SEP"
+    echo "SOURCE: ${SOURCE}"
+    echo "K: $kval"
+    if [[ ! -e "${outname}.subcube.moment0.fits" ]]
+    then
+        symmetric_moments "chan_halfwidth" $aux
+    fi
+
+    # Plot
+    local preflag="--png"
+    local config="$CFGS/multiplot_config8_ch3cn_moments_${SOURCE,,}.cfg"
+    local figure="$FIGS/${FIELD}.${suffix}.${SOURCE}.subcube.moments.pdf"
+    if [[ -e $config ]]
+    then
+        $PLOTTER $preflag $config $figure multiplot
+    fi
+
+    copy_to_paper $figure "${1}"
+}
+
+function plot_line_moments () {
+    local cubename="$IMGS/${FIELD}.${ARRAY}.spw3.partial11.cube.image.fits"
+    local linetags=( "ch3cn_k8" "hdco" "13co" "glycine" "vinyl_cyanide" "cyanoacetylene" "glycolaldehyde")
+    local chanwidths=( "7" "7" "3" "5" "5" "7" "7")
+    local freqs=( "220.47580720" "220.02940780" "220.39868420" "219.52028560" "219.40058460" "219.67465000" "219.911720")
+    local fluxlimit="0"
+
+    for i in ${!linetags[@]}
+    do
+        local suffix="${ARRAY}.${linetags[$i]}"
+        # Calculate moments
+        local outname="${IMGS}/subcubes/${FIELD}.${suffix}.${SOURCE}"
+        local aux="${chanwidths[$i]} ${freqs[$i]} ${VLSR} $fluxlimit"
+        aux="$aux $cubename $outname 0 1 2"
+        echo "$SEP"
+        echo "SOURCE: ${SOURCE}"
+        echo "Line: ${linetags[$i]}"
+        if [[ ! -e "${outname}.subcube.moment0.fits" ]]
+        then
+            symmetric_moments "chan_halfwidth" $aux
+        fi
+
+        # Plot
+        local preflag="--png"
+        local config="$CFGS/multiplot_config8_${linetags[$i]}_moments_${SOURCE,,}.cfg"
+        local figure="$FIGS/${FIELD}.${suffix}.${SOURCE}.subcube.moments.pdf"
+        if [[ -e $config ]]
+        then
+            $PLOTTER $preflag $config $figure multiplot
+        fi
+    done
+}
+
+function plot_pvmaps () {
+    local lines=( "CH2CHCN_23_4_19-22_4_18" "CH2CHCN_23_10_13-22_10_12" 
+                  "CH2CHCN_23_8_15-22_8_14" "CH2CHCN_26_2_25-26_1_26" 
+                  "CH2CHCN_23_2_22-22_2_21" "CH3CH2CHO_35_4_31-35_4_32"
+                  "CH3_2CO_19_3_16-18_4_15EE" "CH3_2CO_19_4_16-18_3_15AA")
+    local sources=( "alma1a" "alma1b" )
+    local fig_config="${CFGS}/figures_pvmaps_${ARRAY}.cfg"
+
+    #for src in ${sources[@]}; do
+    #    get_pv $src $RSLT "${lines[@]}"
+    #done
+    #plot_pv $fig_config $RSLT "${lines[@]}"
+
+    # Channel maps
+    local figconfig="${CFGS}/plot_config8_spw2_chanmaps.cfg"
+    local lineconfig="${CFGS}/lines_config8_spw2.cfg"
+    local figname="${FIGS}/config8_chanmaps/${FIELD}.${ARRAY}.selfcal.contsub.spw2.alma1.png"
+    local cubename="$DIRTY/${FIELD}.${ARRAY}.selfcal.contsub.spw2.robust2.0.image.fits"
+    local clinps=( "--vlsr" "-46.9"  "--lines" )
+    $PLOTTER  $figconfig $figname chanmap "${clinps[@]}" "${lines[@]}" "--lineconfig" "$lineconfig" $cubename
+}
+
+# Additional moments
+function special_moments () {
+    local freq_ranges=( "218.326307-218.343466-GHz" "218.310352-218.32420-GHz"  
+                        "218.228169-218.239006-GHz" "217.915191-217.927533-GHz"
+                        "217.765375-217.783437-GHz" "217.220197-217.231335-GHz"
+                        "217.074796-217.082924-GHz" )
+    local cubename="$DIRTY/${FIELD}.${ARRAY}.selfcal.contsub.spw2.robust2.0.image.fits"
+    local outdir="$RSLT/special_moments/"
+    if [[ ! -d $outdir ]]; then
+      mkdir -p $outdir
+    fi
+
+    for freq_range in ${freq_ranges[@]}; do
+      local suffix="${ARRAY}.${freq_range}"
+
+      # Calculate moments
+      local outname="${outdir}/${FIELD}.${suffix}.${SOURCE}"
+      local aux="${freq_range//-/ }"
+      aux="$aux $cubename $outname 0 1 2"
+      echo "$SEP"
+      echo "SOURCE: ${SOURCE}"
+      if [[ ! -e "${outname}.subcube.moment0.fits" ]]
+      then
+          symmetric_moments "freq_range" $aux
+      fi
+    done
+
+    # Plot
+    #local preflag="--png"
+    local config="$CFGS/plot_config8_special_moments_${SOURCE,,}.cfg"
+    local figdir="$FIGS/experimental"
+    local figure="$figdir/${FIELD}.special_moments.${SOURCE}.subcube.moments.png"
+    if [[ -e $config ]]
+    then
+        $PLOTTER $preflag $config $figure multiplot
+    fi
+}
+
+function vinyl_cyanide_spw2 () {
+    local freq_ranges=( "218.637607-218.657977-GHz" "218.541117-218.567385-GHz"
+                        "218.446681-218.464130-GHz" "218.344953-218.367422-GHz"
+                        "217.520379-217.540700-GHz" )
+    local cubename="$DIRTY/${FIELD}.${ARRAY}.selfcal.contsub.spw2.robust2.0.image.fits"
+    local outdir="$RSLT/special_moments_vinyl_cyanide/"
+    if [[ ! -d $outdir ]]; then
+      mkdir -p $outdir
+    fi
+
+    for freq_range in ${freq_ranges[@]}; do
+      local suffix="${ARRAY}.${freq_range}"
+
+      # Calculate moments
+      local outname="${outdir}/${FIELD}.${suffix}.${SOURCE}"
+      local aux="${freq_range//-/ }"
+      aux="$aux $cubename $outname 0 1 2"
+      echo "$SEP"
+      echo "SOURCE: ${SOURCE}"
+      if [[ ! -e "${outname}.subcube.moment0.fits" ]]
+      then
+          symmetric_moments "freq_range" $aux
+      fi
+    done
+
+    # Plot
+    #local preflag="--png"
+    local config="$CFGS/plot_config8_special_moments_vinyl_cyanide_spw2_${SOURCE,,}.cfg"
+    local figdir="$FIGS/experimental"
+    local figure="$figdir/${FIELD}.special_moments_vinyl_cyanide_spw2.${SOURCE}.subcube.moments.png"
+    if [[ -e $config ]]
+    then
+        $PLOTTER $preflag $config $figure multiplot
+    fi
+}
+
+function single_peaked_spw2 () {
+    local freq_ranges=( "218.367587-218.385429-GHz" "217.050569-217.060481-GHz" 
+                        "217.096240-217.110052-GHz" )
+    local cubename="$DIRTY/${FIELD}.${ARRAY}.selfcal.contsub.spw2.robust2.0.image.fits"
+    local outdir="$RSLT/special_moments_single_peaked/"
+    if [[ ! -d $outdir ]]; then
+      mkdir -p $outdir
+    fi
+
+    for freq_range in ${freq_ranges[@]}; do
+      local suffix="${ARRAY}.${freq_range}"
+
+      # Calculate moments
+      local outname="${outdir}/${FIELD}.${suffix}.${SOURCE}"
+      local aux="${freq_range//-/ }"
+      aux="$aux $cubename $outname 0 1 2"
+      echo "$SEP"
+      echo "SOURCE: ${SOURCE}"
+      if [[ ! -e "${outname}.subcube.moment0.fits" ]]
+      then
+          symmetric_moments "freq_range" $aux
+      fi
+    done
+
+    # Plot
+    #local preflag="--png"
+    local config="$CFGS/plot_config8_special_moments_single_peaked_spw2_${SOURCE,,}.cfg"
+    local figdir="$FIGS/experimental"
+    local figure="$figdir/${FIELD}.special_moments_single_peaked_spw2.${SOURCE}.subcube.moments.png"
+    if [[ -e $config ]]
+    then
+        $PLOTTER $preflag $config $figure multiplot
+    fi
+}
+
+#######################################
+# Calculate all the source dust properties.
+# Globals:
+#   None
+# Arguments:
+#   None
+#######################################
+function get_dust_props() {
+  #local temps=( 20 100 103 105 120 179 220 230 300 )
+  #local bmaj="0.064"
+  #local bmin="0.043"
+  local temps=( 265 )
+  local bmaj="0.36"
+  local bmin="0.30"
+  local temp
+
+  for temp in "${temps[@]}"; do
+    dust_props "${temp}" "${bmin}" "${bmaj}"
+  done
+
+  source_radius
+}
+
+#######################################
+# Calculate velocity gradient for 
+# CH2CHCN config 8 moment 1
+# Globals:
+#   CFGS
+#   FIELD
+# Arguments:
+#   None
+#######################################
+function velocity_gradient() {
+  local config="${CFGS}/alma1a.cfg"
+  local radius="0.5"
+  local molec="CH2CHCN"
+  local qns="23(15,8)-22(15,7),F=22-21"
+  local map="../results_final/config8/${molec}"
+  map="${map}/${FIELD}_${molec}_${qns}_hwidth5.subcube.moment0.fits"
+  vel_gradient "${config}" "${radius}" "${map}"
+}
+
+#######################################
+# Calculate and plot the pv maps for ch3cn K=3 and 13CO
+# Globals:
+#   CFGS
+#   FIELD
+# Arguments:
+#   None
+#######################################
+function pvmaps_ch3cn_13co() {
+  local lines=( "CH3CN_K3" "13CO" )
+  local source="alma1a"
+  local results="${RSLT}/pvmaps"
+  local fig_config="${CFGS}/alma1a_${ARRAY}_ch3cn_pv_150deg.cfg"
+  local pvmap figure
+  
+  # Calculate pv
+  pvmap="${results}/${FIELD}.${source}.CH3CN_K3.pvmap_PA150.fits"
+  echo ${pvmap}
+  if [[ ! -e "$pvmap" ]]; then
+    get_pv "$source" "$results" "${lines[@]}"
+  fi
+
+  # Mask pvmap
+  python p6_pvmap_masked.py "${pvmap}" "3.6" "mJy/beam"
+
+}
+
+################################################################################
+################################################################################
+# Main                                                                         #
+################################################################################
+################################################################################
+if [[ ! -d "${FIGS}" ]]; then
+  mkdir "${FIGS}"
+fi
+
+while [[ ! -z "$1" ]]; do
+  case $1 in
+    1) # Continuum figure
+      plot_continuum $1
+      ;;
+    2) # CH3CN K ladder
+      plot_spectrum_at_position $1
+      ;;
+    3) # CH3OH moments
+      methanol_moments $1
+      ;;
+    4) # Methanol cassis fit
+      methanol_cassis $1
+      ;;
+    5) # Radio SED
+      plot_radio_sed $1
+      ;;
+    6) # Moments
+      vinyl_cyanide_moments $1
+      ;;
+    7) # SiO, SO split moments
+      plot_split_moments $1
+      ;;
+    8) # SiO rolling
+      plot_sio_rolling $1
+      ;;
+    9) # Inverse p-Cigni of 13CO and CH3CN
+      plot_pcyg_profile $1
+      ;;
+    11) # Moments
+      recomb_moments $1
+      ;;
+    12) # Methanol cassis errors
+      methanol_cassis_error $1
+      ;;
+    13) # Methanol spectra
+      plot_ch3oh_spectra $1
+      ;;
+    14) # Continuum figure large scale
+      plot_continuum_config5 $1
+      ;;
+    15) # Vinyl cyanide pv map
+      vinyl_cyanide_pvmaps $1
+      ;;
+    16) # Inverse P-Cygni Gaussian fix
+      pcyg_profile_fit $1
+      ;;
+    ch3cnpv ) # CH3CN K=3 and 13CO pv maps
+      pvmaps_ch3cn_13co
+      ;;
+    vel_grad) # vinylcyanide velocity gradient
+      velocity_gradient
+      ;;
+    hdco) # HDCO moments
+      hdco_moments
+      ;;
+    moms) # Moments of few lines
+      plot_line_moments
+      ;;
+    pvs) # pv maps of few lines
+      plot_pvmaps
+      ;;
+    special) # additional moments
+      special_moments
+      ;;
+    special_vinyl) # additional moments
+      vinyl_cyanide_spw2
+      ;;
+    special_single) # additional moments
+      single_peaked_spw2
+      ;;
+    dust_props)
+      get_dust_props
+      ;;
+  esac
+  shift
+done
+

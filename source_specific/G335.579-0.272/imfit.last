@@ -1,0 +1,25 @@
+taskname           = "imfit"
+imagename          =  "../clean/G335.579-0.272.config8.selfcal.cont_avg.robust0.5.image.pbcor"
+box                =  ""
+region             =  "../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.region.crtf"
+chans              =  ""
+stokes             =  ""
+mask               =  ""
+includepix         =  []
+excludepix         =  []
+residual           =  "../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.residual"
+model              =  ""
+estimates          =  "../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.estimates.txt"
+logfile            =  "../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.log.txt"
+append             =  True
+newestimates       =  "../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.results.txt"
+complist           =  ""
+overwrite          =  False
+dooff              =  False
+offset             =  0.0
+fixoffset          =  False
+stretch            =  False
+rms                =  5.6e-05
+noisefwhm          =  ""
+summary            =  "../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.summary.txt"
+#imfit(imagename="../clean/G335.579-0.272.config8.selfcal.cont_avg.robust0.5.image.pbcor",box="",region="../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.region.crtf",chans="",stokes="",mask="",includepix=[],excludepix=[],residual="../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.residual",model="",estimates="../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.estimates.txt",logfile="../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.log.txt",append=True,newestimates="../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.results.txt",complist="",overwrite=False,dooff=False,offset=0.0,fixoffset=False,stretch=False,rms=5.6e-05,noisefwhm="",summary="../results/G335.579-0.272.alma1.config8.selfcal.cont_avg.robust0.5.image.pbcor.imfit.summary.txt")

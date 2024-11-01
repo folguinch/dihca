@@ -1,0 +1,218 @@
+#!/bin/bash
+################################################################################
+################################################################################
+# Functions                                                                    #
+################################################################################
+################################################################################
+# Next character
+function next_char () {
+    echo "$1" | tr "0-9a-z" "1-9a-z_"
+}
+
+#######################################
+# Copy to paper directory
+# Globals
+#   PAPER
+# Arguments:
+#   The original figure file name.
+#   The index of the paper figure.
+#######################################
+function copy_to_paper() {
+  local figname="${PAPER}/fig${2}.pdf"
+  cp $1 "${figname}"
+}
+
+# Convert angular to physical sizes
+function source_sizes () {
+    local script="$SCRIPTS/source_radius.py"
+    local sizefile="--sizefile $RSLT/source_sizes.dat"
+    local sourcecfg="--source $CFGS/source_g335.cfg" 
+    local outfile="--output $1"
+    $script $sizefile $sourcecfg $outfile
+}
+
+#######################################
+# Calculate symmetric moments
+# Globals:
+#   HOME
+#   VLSR
+#   RSLT
+#   ARRAY
+#   FIELD
+# Arguments:
+#   The method (chan_halfwidth, chan_range, freq_range)
+#   For chan_halfwidth:
+#     Molecule
+#     Quantum number
+#     Width
+#     Cube
+#######################################
+function symmetric_moments() {
+  local cmd="python $HOME/python_devel/line_little_helper/symmetric_moments.py"
+  local baseout
+  local -a flags
+  local -a args
+
+  if [[ "$1" == "chan_halfwidth" ]]; then
+    local molec="$2"
+    local qns="$3"
+    local width="$4"
+    local line_lists="CDMS"
+    #local line_lists="JPL"
+    baseout="${RSLT}/${molec}"
+    if [[ ! -d "${baseout}" ]]; then
+      mkdir -p "${baseout}"
+    fi
+    baseout="${baseout}/${FIELD}_${molec}_${qns}_hwidth${width}"
+    args=( "$5" "${baseout}" 0 1 2 )
+
+    if [[ "${molec}" == "Hα" ]]; then
+      line_lists="Recomb"
+    fi
+    flags=( --line_lists "${line_lists}" --molecule "${molec}" )
+    if [[ "${qns,,}" != "none" ]]; then
+      flags+=( --qns "${qns}" )
+    fi
+    flags+=( "${VLSR[@]}" )
+    flags+=( --win_halfwidth "${width}" )
+  elif [[ "$1" == "chan_range" ]]; then
+    shift 1
+    flags=( --chan_range "$@" )
+  elif [[ "$1" == "freq_range" ]]; then
+    shift 1
+    flags=( --freq_range "$@")
+  else
+    echo "$1: not accepted by symmetric_moments" >&2
+    exit 1
+  fi
+  ${cmd} "${flags[@]}" "${args[@]}"
+}
+
+#######################################
+# Calculate moving moments
+# Globals:
+#   HOME
+#   VLSR
+# Arguments:
+#   The molecule
+#   The split window
+#   The moment 0 window
+#   The number of channels selected
+#   The image filename
+#######################################
+function moving_moments() {
+  local cmd="python $HOME/python_devel/line_little_helper/moving_moments.py"
+  local outdir="${RSLT}/$1"
+  local -a flags
+  flags=( "${VLSR[@]}" --savemasks --split $2 $3 --molecule "$1" )
+
+  $cmd "${flags[@]}" $4 "${outdir}" "$5"
+}
+
+#######################################
+# Calculate velocity gradient
+# Globals:
+#   SCRIPTS
+#   DISTANCE
+#   SEP
+# Arguments:
+#   Source configuration file
+#   Radius for cutout in arcsec
+#   Input moment file
+#######################################
+function vel_gradient() {
+  local script1="$SCRIPTS/get_subimage.py"
+  local script2="$SCRIPTS/velocity_gradient.py"
+  local infile
+  local moment0
+  local moment1
+  local -a flags
+  
+  # Cutouts
+  flags=( --source "$1" --radius "$2" "arcsec" )
+  for i in {0..1}; do
+    infile="${3/moment[0-2]/moment${i}}"
+    $script1 "${infile}" "${infile}" "${flags[@]}"
+    if [[ $i -eq 0 ]]; then
+      moment0="${infile/.fits/.subimage.G335-ALMA1a.fits}"
+    else
+      moment1="${infile/.fits/.subimage.G335-ALMA1a.fits}"
+    fi
+  done
+  
+  # Velocity gradient
+  flags=( --keplerian_mass "${DISTANCE[@]}" --reference "${moment0}")
+  flags+=( --moment1 "${moment1}" )
+  $script2 "${flags[@]}" "${moment1}"
+  echo $SEP
+}
+
+#######################################
+# Calculate dust mass and column density
+# Globals:
+#   SCRIPTS
+#   RSLT
+#   FREQ
+#   DISTANCE
+# Arguments:
+#   Dust temperature.
+#   Beam size: bmaj bmin.
+#######################################
+function dust_props() {
+  # Uses python2
+  local script1="${SCRIPTS}/dust_mass.py"
+  local script2="${SCRIPTS}/column_density.py"
+  local outfile="${RSLT}/source_dust_mass_t${1}K.txt"
+  local fluxfile="${RSLT}/source_integrated_fluxes.dat"
+  #local beam="0.303 0.359"
+
+  local flags=( --fluxfile "${fluxfile}" -t "$1" )
+  flags+=( "${FREQ[@]}" "${DISTANCE[@]}" )
+  flags+=( --output "${outfile}" )
+  $script1 "${flags[@]}"
+  
+  outfile="${outfile/_dust_mass_/_column_density_}"
+  fluxfile="${RSLT}/source_peak_fluxes.dat"
+  flags=( --fluxfile "$fluxfile" -t "$1" )
+  flags+=( "${FREQ[@]}" --output "${outfile}" )
+  $script2 "${flags[@]}" "$2" "$3" 
+}
+
+#######################################
+# Calculate source physical radius.
+# Globals:
+#   SCRIPTS
+#   RSLT
+#   DISTANCE
+# Arguments:
+#   None
+#######################################
+function source_radius() {
+  # Uses python2
+  local script="${SCRIPTS}/source_radius.py"
+  local outfile="${RSLT}/source_radius.txt"
+  local sizefile="${RSLT}/source_sizes.dat"
+  local -a flags=( --definition "0" )
+  flags+=( "${DISTANCE[@]}" )
+  flags+=( --sizefile "${sizefile}" --output "${outfile}" )
+  
+  $script "${flags[@]}"
+}
+
+# pv maps
+function plot_pvmaps () {
+    python ~/Python/plotter/plotter.py --png configs/p5_figures.cfg figures/G335.579-0.272.config5.ch3cn_k4.pvmap.pdf plotpvmaps --section pvmap --selflevels results/G335.579-0.272.config5.ch3cn_k4.pvmap_PA200.fits
+}
+
+# Fit vlsr
+function fit_vlsr () {
+    local script="${SCRIPTS}/line_id.py"
+    local configs="../configs"
+    #local candidates="$configs/lines_spw3_candidates_1781_1798.cfg"
+    local reference="$CFGS/lines_spw3_reference.cfg"
+    #local flags="--source $configs/source_alma${1}.cfg --candidates $candidates"
+    local flags="--source $CFGS/source_alma${1}.cfg"
+    local cube="../clean/G335.579-0.272.config5.spw3.subcube.alma${1}.fits"
+    local results="../results/line_id_alma${1}_fit_vlsr/"
+    $script $cube $reference $results $flags
+}

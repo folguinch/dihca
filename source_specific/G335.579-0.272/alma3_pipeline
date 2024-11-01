@@ -1,0 +1,24 @@
+#!/bin/bash
+set +eu
+################################################################################
+################################################################################
+# Globals                                                                      #
+################################################################################
+################################################################################
+readonly FIELD="G335.579-0.272"
+readonly SOURCE="ALMA3"
+readonly ARRAY="concat"
+readonly CLEAN="../yclean_${ARRAY}"
+readonly SPECS="../${FIELD}/results_final/${ARRAY}/CH3CN/spectra"
+
+declare cmd cube
+declare -a flags
+
+cmd="python ${HOME}/python_devel/line_little_helper/spectrum_helper.py"
+flags=( --rms 2 "mJy/beam" --outdir "${SPECS}" --savemask "specs_mask.fits"
+        --vlsr "-47.6" "km/s" --rest )
+cube="${CLEAN}/G335.579-0.272_spw3_3290-3610/autoG335.579-0.272_spw0.12m.tc_final.fits"
+
+$cmd $cube "${flags[@]}"
+
+

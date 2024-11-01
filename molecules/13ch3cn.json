@@ -1,0 +1,25 @@
+{
+    "name": "(13)CH3CN",
+    "transitions": [
+        {
+            "species": "(13)CH3CN",
+            "qns": "13(3)-12(3)",
+            "restfreq": 232.1949056,
+            "restfreq_unit": "GHz",
+            "logaij": -2.99071,
+            "obsfreq": null,
+            "eup": 142.42947,
+            "eup_unit": "K"
+        },
+        {
+            "species": "(13)CH3CN",
+            "qns": "13(4)-12(4)",
+            "restfreq": 232.1643692,
+            "restfreq_unit": "GHz",
+            "logaij": -3.01034,
+            "obsfreq": null,
+            "eup": 192.50755,
+            "eup_unit": "K"
+        }
+    ]
+}
