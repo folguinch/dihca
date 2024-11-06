@@ -398,6 +398,8 @@ def peak_maps(source,
                          '--use_dask',
                          '--common_beam',
                         ]
+                if mol in SAVED_MOLS:
+                    flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
                 if 'rms' in src_cfg:
                     flags += ['--rms'] + src_cfg['rms'].split()
                 
