@@ -15,7 +15,7 @@ from line_little_helper.symmetric_moments import symmetric_moments
 from line_little_helper.utils import normalize_qns
 from tile_plotter.plotter import plotter
 
-from common_paths import *
+from common_paths import results, configs, figures
 
 # Recommended line lists
 LINE_LISTS = {
@@ -198,7 +198,10 @@ def moments(source,
             #molecules=['HC3N'],
             #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
             qns_mol=LINE_TRANSITIONS,
+            # For 480 kHz
             half_width=10):
+            # For 900 kHz
+            #half_width=5):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
     for mol in molecules:
         # Find what molecules are in the source
@@ -421,13 +424,21 @@ if __name__ == '__main__':
         7: peak_maps,
     }
     skip = [2, 3, 4, 5, 6]
-    array = 'c8'
-    #array = 'concat'
+    array = 'c5c8'
 
     # Read sources from command line
+    sources_970kHz = ['G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
+                      'G34.43+0.24MM2', 'G35.13-0.74', 'G5.89-0.37',
+                      'IRAS_18182-1433', 'IRDC_182231243', 'W33A']
     #sources = ['IRAS_180891732', 'G336.01-0.82']
-    sources = ['W33A', 'G333.23-0.06', 'IRAS_180891732', 'G34.43+0.24',
-               'G35.20-0.74_N', 'G35.03+0.35_A']
+    sources_490kHz = ['G14.22-0.50_S', 'G24.60+0.08', 'G29.96-0.02',
+                      'G333.12-0.56', 'G333.23-0.06', 'G333.46-0.16',
+                      'G335.579-0.272', 'G335.78+0.17', 'G336.01-0.82',
+                      'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
+                      'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
+                      'IRAS_181511208', 'IRAS_18337-0743', 'NGC6334I',
+                      'NGC_6334_I_N']
+    sources = sources_490kHz
 
     # Iterate over source config files
     iterover = (configs / f'{source}.cfg' for source in sources)
