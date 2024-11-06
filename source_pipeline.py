@@ -255,7 +255,7 @@ def moments(source,
                 plotname = figures / source.name / array
                 plotname.mkdir(parents=True, exist_ok=True)
                 plotname = plotname / f'{mol}_{norm_qns}.png'
-                plotter([f'{cfg}', f'{plotname}'])
+                #plotter([f'{cfg}', f'{plotname}'])
 
 def pv_maps(source, outdir, configs, figures, array):
     # Search for configs
@@ -425,7 +425,7 @@ if __name__ == '__main__':
         6: crop_line,
         7: peak_maps,
     }
-    skip = [2, 3, 4, 5, 6]
+    skip = [2, 3, 4, 5, 6, 7]
     array = 'c5c8'
 
     # Read sources from command line
