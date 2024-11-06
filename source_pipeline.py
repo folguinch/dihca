@@ -388,7 +388,7 @@ def peak_maps(source,
                 # Moment flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
                          f'{source.vlsr.unit}'.replace(' ', ''),
-                         '--line_lists', line_lists.get(mol, 'CDMS'),
+                         '--line_lists', LINE_LISTS.get(mol, 'CDMS'),
                          '--molecule', mol,
                          '--qns', qns,
                          '--nsigma', '5',
