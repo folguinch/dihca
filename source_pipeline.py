@@ -439,7 +439,7 @@ if __name__ == '__main__':
                       'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
                       'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
                       'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
-    sources = ['IRAS_180891732']
+    sources = ['G14.22-0.50_S']
     #sources = sources_970kHz
 
     # Iterate over source config files
