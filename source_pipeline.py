@@ -199,9 +199,9 @@ def moments(source,
             #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
             qns_mol=LINE_TRANSITIONS,
             # For 480 kHz
-            #half_width=10):
+            half_width=10):
             # For 900 kHz
-            half_width=5):
+            #half_width=5):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
     for mol in molecules:
         # Find what molecules are in the source
