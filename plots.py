@@ -13,32 +13,31 @@ STEPS = {
     5: 'streamers'
 }
 
-def by_source(sources, skip, flags):
+def by_source(sources, config_dir, skip, flags, filters=None):
     # Iterate over sources
     for source in sources:
         # Iterate over steps
         for key, val in STEPS.items():
             if key in skip:
                 continue
-
-            config = config_dir / f'{source}_{val}.cfg'
             plot_dir = figures / source / PLOT_TYPE
             plot_dir.mkdir(parents=True, exist_ok=True)
-            if config.exists():
+            for config in config_dir.glob(f'{source}_{val}_*.cfg'):
+                if filters is not None:
+                    skip = False
+                    for filter_val in filters:
+                        if filter_val not in f'{config}':
+                            skip = True
+                            break
+                    if skip: 
+                        print(f'Skipping: {config}')
+                        continue
                 print(f'Plotting {config}')
-                plotname = plot_dir / f'{val}.png'
+                name = config.stem.split('_')
+                ind = name.index(val.split('_')[0])
+                name = '_'.join(name[ind:])
+                plotname = plot_dir / f'{name}.png'
                 plotter([f'{config}', f'{plotname}'] + flags)
-            elif config_dir.glob(f'{source}_{val}_*.cfg'):
-                for config in config_dir.glob(f'{source}_{val}_*.cfg'):
-                    print(f'Plotting {config}')
-                    name = config.stem.split('_')
-                    ind = name.index(val.split('_')[0])
-                    name = '_'.join(name[ind:])
-                    plotname = plot_dir / f'{name}.png'
-                    plotter([f'{config}', f'{plotname}'] + flags)
-            else:
-                print(f'Skipping: {config}')
-                continue
 
 if __name__ == '__main__':
     skip = [1, 2, 3, 4, 5]
@@ -57,6 +56,7 @@ if __name__ == '__main__':
                'W33A', 'IRAS_180891732']
     #sources = ['G336.01-0.82']
     #sources = ['IRAS_180891732']
+    filters = ['c5c8']
 
     # Flags
     flags = []
@@ -65,6 +65,6 @@ if __name__ == '__main__':
 
     # Plot
     if len(sources) > 0:
-        by_source(sources, skip, flags)
+        by_source(sources, config_dir, skip, flags, filters=filters)
     else:
         raise NotImplementedError
