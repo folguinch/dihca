@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     # Flags
     flags = []
-    if plot_type == 'papers':
+    if PLOT_TYPE == 'papers':
         flags = ['--pdf']
 
     # Plot
