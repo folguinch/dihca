@@ -24,12 +24,12 @@ def by_source(sources, config_dir, skip, flags, filters=None):
             plot_dir.mkdir(parents=True, exist_ok=True)
             for config in config_dir.glob(f'{source}_{val}_*.cfg'):
                 if filters is not None:
-                    skip = False
+                    toskip = False
                     for filter_val in filters:
                         if filter_val not in f'{config}':
-                            skip = True
+                            toskip = True
                             break
-                    if skip: 
+                    if toskip: 
                         print(f'Skipping: {config}')
                         continue
                 print(f'Plotting {config}')
@@ -40,7 +40,7 @@ def by_source(sources, config_dir, skip, flags, filters=None):
                 plotter([f'{config}', f'{plotname}'] + flags)
 
 if __name__ == '__main__':
-    skip = [1, 2, 3, 4, 5]
+    skip = [1, 3, 4, 5]
     config_dir = configs / 'plots' / PLOT_TYPE
 
     # Read sources from command line
