@@ -4,7 +4,7 @@ import sys
 
 from astro_source.source import Source
 #from line_little_helper.scripts.cassis_rebuild_map import rebuild_map
-#from line_little_helper.scripts.moving_moments import main as moving_moments
+from line_little_helper.scripts.moving_moments import main as moving_moments
 #from line_little_helper.scripts.spectrum_helper import spectrum_helper
 from line_little_helper.line_peak_map import line_peak_map
 from line_little_helper.molecule import NoTransitionError
@@ -301,21 +301,34 @@ def pv_rotation(pvconfig, source, outdir, figures, array):
     pvmap_fitter(list(map(str, pvmaps)) + flags)
 
 def split_moments(source, outdir, configs, figures, array,
-                  molecules=['SiO', '(13)CO']):
+                  #molecules=['SiO', '(13)CO'],
+                  molecules=['CH3OH'],
+                  # SiO 480kHz
+                  #chansep=5, chanwidth=6, bandwidth=80):
+                  # CH3OH 900kHz
+                  chansep=3, chanwidth=3, bandwidth=10):
+                  # CH3OH 480kHz
+                  #chansep=3, chanwidth=4, bandwidth=20):
     # Calculate split moments
     for mol in molecules:
         configs_with_mol = search_molecule(source, mol, array)
+        norm_mol = mol.replace('(', '').replace(')', '')
         for config in configs_with_mol:
             cube = config['file']
             flags = ['--vlsr', f'{source.vlsr.value}',
                      f'{source.vlsr.unit}'.replace(' ', ''),
-                     '--line_lists', line_lists.get(mol, 'CDMS'),
+                     '--line_lists', LINE_LISTS.get(mol, 'CDMS'),
                      '--savemasks',
-                     '--split', '5', '6',
+                     '--split', f'{chansep}', f'{chanwidth}',
                      '--molecule', mol]
+            if mol in SAVED_MOLS:
+                flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
             if 'rms' in config:
                 flags += ['--rms'] + config['rms'].split()
-            moving_moments(flags + ['80', f'{outdir / mol}', cube])
+            dir_suff = f'{mol}_split{chansep}_{chanwidth}'
+            moldir = (outdir / norm_mol /
+                      f'split{chansep}_width{chanwidth}_range{bandwidth}')
+            moving_moments(flags + [f'{bandwidth}', f'{moldir}', cube])
 
 def extract_cassis(src, outdir, configs, figures, array, mol='CH3OH'):
     """Extract spectra for CASSIS fit."""
@@ -425,7 +438,7 @@ if __name__ == '__main__':
         6: crop_line,
         7: peak_maps,
     }
-    skip = [2, 3, 4, 5, 6, 7]
+    skip = [1, 3, 4, 5, 6, 7]
     array = 'c5c8'
 
     # Read sources from command line
@@ -439,8 +452,8 @@ if __name__ == '__main__':
                       'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
                       'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
                       'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
-    sources = ['G14.22-0.50_S']
-    #sources = sources_970kHz
+    #sources = ['G14.22-0.50_S']
+    sources = sources_970kHz
 
     # Iterate over source config files
     iterover = (configs / f'{source}.cfg' for source in sources)
