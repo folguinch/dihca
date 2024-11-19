@@ -269,7 +269,7 @@ def line_cube(source,
               molecules=['CH3OH'],
               #molecules=['HC3N'],
               #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
-              qns_mol={'CH3OH': '18(3,15)-17(4,14)A,vt=0'},
+              qns_mol={'CH3OH': ['18(3,15)-17(4,14)A,vt=0']},
               spw='0',
               # For 480 kHz
               half_width=10):
