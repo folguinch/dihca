@@ -257,6 +257,62 @@ def moments(source,
                 plotname = plotname / f'{mol}_{norm_qns}.png'
                 #plotter([f'{cfg}', f'{plotname}'])
 
+def line_cube(source,
+              outdir,
+              configs,
+              figures,
+              array,
+              #molecules=['CH3CN', '(13)CH3CN', '(13)CH3OH', 'CH3CHO', 'HNCO',
+              #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
+              #molecules=['(13)CH3OH', 'CH3OH'],
+              molecules=['CH3OH'],
+              #molecules=['HC3N'],
+              #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
+              qns_mol={'CH3OH': '18(3,15)-17(4,14)A,vt=0'},
+              spw='0',
+              # For 480 kHz
+              half_width=10):
+    # For 900 kHz
+            #half_width=5):
+    for mol in molecules:
+        # Find what molecules are in the source
+        configs_with_mol = search_molecule(source, mol, array)
+        processed = []
+        norm_mol = mol.replace('(', '').replace(')', '')
+        for qns in qns_mol[mol]:
+            if qns in processed:
+                continue
+
+            for src_cfg in configs_with_mol:
+                cube = src_cfg['file']
+                norm_qns = normalize_qns(qns)
+                
+                # Moment flags
+                flags = ['--vlsr', f'{source.vlsr.value}',
+                         f'{source.vlsr.unit}'.replace(' ', ''),
+                         '--line_lists', LINE_LISTS.get(mol, 'CDMS'),
+                         '--molecule', mol,
+                         '--qns', qns,
+                         '--nsigma', '3',
+                         '--win_halfwidth', f'{half_width}',
+                        ]
+                if mol in SAVED_MOLS:
+                    flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
+                if 'rms' in src_cfg:
+                    flags += ['--rms'] + src_cfg['rms'].split()
+                
+                # Compute moments
+                try:
+                    name = f'spw{spw}_from_{norm_mol}'
+                    moldir = outdir / 'per_hot_core'
+                    moldir.mkdir(parents=True, exist_ok=True)
+                    filenames = symmetric_moments(
+                        flags + [cube, str(moldir / name)])
+                    processed.append(qns)
+                except NoTransitionError:
+                    print(f'{mol} ({qns}): not in cube {cube}')
+                    continue
+
 def pv_maps(source, outdir, configs, figures, array):
     # Search for configs
     streams = configs / f'pvmaps/{source.name}_streams.cfg'
@@ -437,8 +493,9 @@ if __name__ == '__main__':
         5: cassis_to_fits,
         6: crop_line,
         7: peak_maps,
+        8: line_cube,
     }
-    skip = [1, 3, 4, 5, 6, 7]
+    skip = [1, 2, 3, 4, 5, 6, 7]
     array = 'c5c8'
 
     # Read sources from command line
@@ -453,7 +510,7 @@ if __name__ == '__main__':
                       'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
                       'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
     #sources = ['G14.22-0.50_S']
-    sources = sources_970kHz
+    sources = sources_490kHz
 
     # Iterate over source config files
     iterover = (configs / f'{source}.cfg' for source in sources)
