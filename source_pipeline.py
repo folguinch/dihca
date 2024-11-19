@@ -4,7 +4,8 @@ import sys
 
 from astro_source.source import Source
 #from line_little_helper.scripts.cassis_rebuild_map import rebuild_map
-from line_little_helper.moving_moments import main as moving_moments
+from line_little_helper.auto_subcube import auto_subcube
+from line_little_helper.moving_moments import moving_moments
 #from line_little_helper.scripts.spectrum_helper import spectrum_helper
 from line_little_helper.line_peak_map import line_peak_map
 from line_little_helper.molecule import NoTransitionError
@@ -306,7 +307,7 @@ def line_cube(source,
                     name = f'spw{spw}_from_{norm_mol}'
                     moldir = outdir / 'per_hot_core'
                     moldir.mkdir(parents=True, exist_ok=True)
-                    filenames = symmetric_moments(
+                    filenames = auto_subcube(
                         flags + [cube, str(moldir / name)])
                     processed.append(qns)
                 except NoTransitionError:
