@@ -294,7 +294,7 @@ def line_cube(source,
                          '--line_lists', LINE_LISTS.get(mol, 'CDMS'),
                          '--molecule', mol,
                          '--qns', qns,
-                         '--nsigma', '3',
+                         '--nsigma', '5',
                          '--win_halfwidth', f'{half_width}',
                         ]
                 if mol in SAVED_MOLS:
