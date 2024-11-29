@@ -14,6 +14,7 @@ from line_little_helper.pvmap_extractor import pvmap_extractor
 from line_little_helper.pvmap_fitter import pvmap_fitter
 from line_little_helper.subcube_extractor import subcube_extractor
 from line_little_helper.symmetric_moments import symmetric_moments
+from line_little_helper.local_moments import local_moments
 from line_little_helper.utils import normalize_qns
 from tile_plotter.plotter import plotter
 
@@ -398,7 +399,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [3, 4, 5, 6, 7,8]
+    skip = [1, 3, 4, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
