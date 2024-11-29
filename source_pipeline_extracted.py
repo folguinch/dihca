@@ -244,7 +244,7 @@ def moments(source: Source,
                 # Compute moments
                 try:
                     name = f'{norm_mol}_{norm_qns}'
-                    moldir = outdir / '{hmc}_moments'
+                    moldir = outdir / f'{hmc}_moments'
                     moldir.mkdir(parents=True, exist_ok=True)
                     # Symmetric
                     print('-' * 20 + 'Symmetric' + '-' * 20)
