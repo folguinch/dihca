@@ -247,16 +247,18 @@ def moments(source: Source,
                     moldir = outdir / '{hmc}_moments'
                     moldir.mkdir(parents=True, exist_ok=True)
                     # Symmetric
+                    print('-' * 20 + 'Symmetric' + '-' * 20)
                     filenames = symmetric_moments(
                         flags + ['--win_halfwidth', f'{half_width[chanwidth]}',
                                  cube, str(moldir / name), '0', '1', '2'])
                     # Local
+                    print('-' * 20 + 'Local' + '-' * 20)
                     processed.append(qns)
-                    local_moments(flags + ['--win_halfwidth',
-                                           f'{half_width[chanwidth]}',
-                                           '--moments', '1', '2',
-                                           cube, str(moldir / name)])
+                    local_moments([cube, str(moldir / name), '--win_halfwidth',
+                                   f'{half_width[chanwidth]}',
+                                   '--moments', '1', '2'] + flags)
                     # Moving
+                    print('-' * 20 + 'Moving' + '-' * 20)
                     moving_moments(flags + ['--savemasks', '10', f'{moldir}',
                                             cube])
                 except NoTransitionError:
