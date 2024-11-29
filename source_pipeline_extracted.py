@@ -396,7 +396,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 2, 3, 4, 5, 6, 7,8]
+    skip = [3, 4, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
@@ -415,7 +415,8 @@ if __name__ == '__main__':
     sources = ['G11.92-0.61']
 
     # Iterate over source config files
-    iterover = (configs / f'{source}.cfg' for source in sources)
+    iterover = (configs / 'extracted' / f'{source}.cfg'
+                for source in sources)
     for config in iterover:
         # Open source
         src = Source(config_file=config)
