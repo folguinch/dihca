@@ -171,7 +171,7 @@ def crop_line(source: Source,
                 # Flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
                          f'{source.vlsr.unit}'.replace(' ', ''),
-                         '--line_lists', line_lists.get(mol, 'CDMS'),
+                         '--line_lists', LINE_LISTS.get(mol, 'CDMS'),
                          '--molecule', mol,
                          '--qns', qns,
                          '--common_beam',
