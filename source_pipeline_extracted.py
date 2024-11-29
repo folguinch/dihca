@@ -199,8 +199,8 @@ def crop_line(source: Source,
 
                 # Put new source config section
                 section = src_cfg.name + f'_{norm_mol}_{norm_qns}'
-                source.update_config(section, **src_cfg)
-                source.update_config(section, file=f'{out_cube}')
+                source.copy_config(src_cfg.name, section)
+                source.config[section]['file'] = f'{out_cube}'
                 source.write()
 
 def moments(source: Source,
