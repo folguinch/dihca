@@ -179,6 +179,8 @@ def crop_line(source: Source,
                          '--win_halfwidth', f'{half_width}',
                          '--spectral_axis', 'velocity',
                         ]
+                if mol in SAVED_MOLS:
+                    flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
                 if 'rms' in src_cfg:
                     flags += ['--rms'] + src_cfg['rms'].split()
 
