@@ -415,16 +415,17 @@ if __name__ == '__main__':
     sources = ['G11.92-0.61']
 
     # Iterate over source config files
-    iterover = (configs / 'extracted' / f'{source}.cfg'
-                for source in sources)
-    for config in iterover:
-        # Open source
-        src = Source(config_file=config)
-        outdir = results / src.name / array / 'per_hot_core'
+    config_dir = configs / 'extracted'
+    for source in sources:
+        for config in config_dir.glob(f'{source}_hmc*.cfg'):
+            # Open source
+            src = Source(config_file=config)
+            outdir = results / src.name / array / 'per_hot_core'
 
-        # Run steps
-        for n, func in steps.items():
-            if n in skip:
-                continue
-            print(f'Step {n}')
-            func(src, outdir, configs, figures, array)
+            # Run steps
+            for n, func in steps.items():
+                if n in skip:
+                    continue
+                print(f'Step {n}')
+                func(src, outdir, configs, figures, array)
+                print("=" * 80)
