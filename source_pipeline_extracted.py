@@ -241,7 +241,7 @@ def moments(source: Source,
                 # Compute moments
                 try:
                     name = f'{norm_mol}_{norm_qns}'
-                    moldir = outdir / 'moments'
+                    moldir = outdir / '{hmc}_moments'
                     moldir.mkdir(parents=True, exist_ok=True)
                     # Symmetric
                     filenames = symmetric_moments(
@@ -421,11 +421,12 @@ if __name__ == '__main__':
             # Open source
             src = Source(config_file=config)
             outdir = results / src.name / array / 'per_hot_core'
+            hmc = config.stem.split('_')[-1]
 
             # Run steps
             for n, func in steps.items():
                 if n in skip:
                     continue
                 print(f'Step {n}')
-                func(src, outdir, configs, figures, array)
+                func(src, hmc, outdir, array)
                 print("=" * 80)
