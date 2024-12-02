@@ -260,7 +260,7 @@ def moments(source: Source,
                     # Moving
                     print('-' * 20 + 'Moving' + '-' * 20)
                     moving_moments(['20', f'{moldir}', cube,
-                                    '--savemasks'] + flags)
+                                    '--savemasks'] + flags[:-2])
                 except NoTransitionError:
                     print(f'{mol} ({qns}): not in cube {cube}')
                     continue
