@@ -234,7 +234,6 @@ def moments(source: Source,
                          '--molecule', mol,
                          '--qns', qns,
                          '--nsigma', '5',
-                         '--win_halfwidth', f'{half_width[chanwidth]}',
                         ]
                 if mol in SAVED_MOLS:
                     flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
@@ -260,7 +259,7 @@ def moments(source: Source,
                     # Moving
                     print('-' * 20 + 'Moving' + '-' * 20)
                     moving_moments(['20', f'{moldir}', cube,
-                                    '--savemasks'] + flags[:-2])
+                                    '--savemasks'] + flags)
                 except NoTransitionError:
                     print(f'{mol} ({qns}): not in cube {cube}')
                     continue
