@@ -16,6 +16,7 @@ from line_little_helper.subcube_extractor import subcube_extractor
 from line_little_helper.symmetric_moments import symmetric_moments
 from line_little_helper.local_moments import local_moments
 from line_little_helper.utils import normalize_qns
+from line_little_helper.velocity_gradient import velocity_gradient
 from tile_plotter.plotter import plotter
 
 from common_paths import results, configs, figures
@@ -168,6 +169,10 @@ def crop_line(source: Source,
 
             for src_cfg in configs_with_mol:
                 cube = src_cfg['file']
+                new_section = src_cfg.name + f'_{norm_mol}_{norm_qns}'
+                if new_section in source.config:
+                    print(f'Skipping {src_cfg.name}')
+                    continue
                 
                 # Flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
@@ -188,7 +193,7 @@ def crop_line(source: Source,
                 # Compute moments
                 moldir = outdir / 'line_cubes'
                 try:
-                    print(cube)
+                    print(f'Working on cube: {cube}')
                     name = f'{hmc}_{norm_mol}_{norm_qns}_nchans{half_width*2}.fits'
                     out_cube = moldir / name
                     moldir.mkdir(parents=True, exist_ok=True)
@@ -199,9 +204,8 @@ def crop_line(source: Source,
                     continue
 
                 # Put new source config section
-                section = src_cfg.name + f'_{norm_mol}_{norm_qns}'
-                source.copy_config(src_cfg.name, section)
-                source.config[section]['file'] = f'{out_cube}'
+                source.copy_config(src_cfg.name, new_section)
+                source.config[new_section]['file'] = f'{out_cube}'
                 source.write()
 
 def moments(source: Source,
@@ -263,6 +267,26 @@ def moments(source: Source,
                 except NoTransitionError:
                     print(f'{mol} ({qns}): not in cube {cube}')
                     continue
+
+def moment1_gradients(source: Source,
+                      hmc: str,
+                      outdir: Path,
+                      array: str,
+                      ):
+    """Calculate the velocity gradient from moment 1 maps."""
+    #position = source.position.to_string(style='hmsdms')
+    #flags = [--coordinate] + position.split()
+    flags = ['--source', f'{source.config_file}']
+    moldir = outdir / f'{hmc}_moments'
+    for mom1 in moldir.glob('*moment1*.fits'):
+        output = mom1.with_name(mom1.stem)
+        stats = velocity_gradient([f'{mom1}', f'{output}'] + flags)
+        stats_file = mom1.with_suffix('.gradient.txt')
+        lines = [
+            f'direction: {stats[0]} +/- {stats[1]}',
+            f'direction_mean: {stats[2]}'
+            ]
+        stats_file.write_text('\n'.join(lines))
 
 def pv_maps(source, outdir, configs, figures, array):
     # Search for configs
@@ -393,6 +417,7 @@ if __name__ == '__main__':
     steps = {
         1: crop_line,
         2: moments,
+        3: gradients,
     #    2: split_moments,
     #    3: pv_maps,
     #    4: extract_cassis,
@@ -400,7 +425,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 3, 4, 5, 6, 7,8]
+    skip = [1, 2, 4, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
