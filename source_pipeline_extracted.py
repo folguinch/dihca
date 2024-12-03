@@ -256,7 +256,6 @@ def moments(source: Source,
                                  cube, str(moldir / name), '0', '1', '2'])
                     # Local
                     print('-' * 20 + 'Local' + '-' * 20)
-                    processed.append(qns)
                     local_moments([cube, str(moldir / name), '--win_halfwidth',
                                    f'{half_width[chanwidth]}',
                                    '--moments', '1', '2'] + flags)
@@ -264,6 +263,7 @@ def moments(source: Source,
                     print('-' * 20 + 'Moving' + '-' * 20)
                     moving_moments(['20', f'{moldir}', cube,
                                     '--savemasks'] + flags)
+                    processed.append(qns)
                 except NoTransitionError:
                     print(f'{mol} ({qns}): not in cube {cube}')
                     continue
@@ -278,8 +278,9 @@ def moment1_gradients(source: Source,
     #flags = [--coordinate] + position.split()
     flags = ['--source', f'{source.config_file}']
     moldir = outdir / f'{hmc}_moments'
-    files = list(moldir.glob('*moment1.fits')
-    files += list(moldir.glob('*moment1_dilate{1,2,3,5,8,10}.fits')
+    files = list(moldir.glob('*moment1.fits'))
+    files += list(moldir.glob('*moment1_dilate[0-9].fits'))
+    files += list(moldir.glob('*moment1_dilate10.fits'))
     for mom1 in files:
         print('Calculating gradient on %s', mom1)
         output = mom1.with_name(mom1.stem)
@@ -428,7 +429,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 2, 4, 5, 6, 7,8]
+    skip = [1, 4, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
