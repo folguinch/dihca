@@ -417,7 +417,7 @@ if __name__ == '__main__':
     steps = {
         1: crop_line,
         2: moments,
-        3: gradients,
+        3: moment1_gradients,
     #    2: split_moments,
     #    3: pv_maps,
     #    4: extract_cassis,
