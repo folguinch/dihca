@@ -279,6 +279,7 @@ def moment1_gradients(source: Source,
     flags = ['--source', f'{source.config_file}']
     moldir = outdir / f'{hmc}_moments'
     for mom1 in moldir.glob('*moment1*.fits'):
+        print('Calculating gradient on %s', mom1)
         output = mom1.with_name(mom1.stem)
         stats = velocity_gradient([f'{mom1}', f'{output}'] + flags)
         stats_file = mom1.with_suffix('.gradient.txt')
