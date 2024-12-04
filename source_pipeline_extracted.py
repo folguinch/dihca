@@ -288,52 +288,47 @@ def moment1_gradients(source: Source,
         stats_file = mom1.with_suffix('.gradient.txt')
         lines = [
             f'direction: {stats[0]} +/- {stats[1]}',
-            f'direction_mean: {stats[2]}'
+            f'direction_median: {stats[2]}'
             ]
         stats_file.write_text('\n'.join(lines))
 
-def pv_maps(source, outdir, configs, figures, array):
-    # Search for configs
-    streams = configs / f'pvmaps/{source.name}_streams.cfg'
-    rotation = configs / f'pvmaps/{source.name}_rotation.cfg'
-    if streams.is_file():
-        pv_streams(streams, source, outdir, figures, array)
-    if rotation.is_file():
-        pv_rotation(rotation, source, outdir, figures, array)
-
-def pv_extractor(pvconfig, source, outdir, recenter=False):
+def pv_extractor(pvconfig: Path,
+                 source: Source,
+                 outdir: Path,
+                 recenter: bool = False):
+    """Extract PV map"""
     results = outdir / f'{pvconfig.stem}.fits'
     flags = ['--pvconfig', f'{pvconfig}', '--output', f'{results}',
              '--estimate_error', '--source', f'{source.config_file}',
              '--common_beam']
     if recenter:
         flags += ['--recenter']
+
     return pvmap_extractor(flags)
-    #return results.parent.glob(f'{pvconfig.stem}*.fits')
     
-def pv_streams(pvconfig, source, outdir, figures, array):
-    # Extract pv maps
-    pvout = outdir / 'pvmaps'
-    pvmaps = list(pvout.glob('*stream*.fits'))
-    if len(pvmaps) == 0:
-        pvmaps = pv_extractor(pvconfig, source, pvout)
+def pv_maps(source: Source,
+            hmc: str,
+            outdir: Path,
+            array: str):
+    """Calculate different types of PV maps."""
+    # Search for configs
+    rotation = configs / 'pvmaps' / f'{source.name}_{hmc}_rotation.cfg'
+    output = outdir / f'{hmc}_pvmaps'
+    output.mkdir(parents=True, exist_ok=True)
+    if rotation.is_file():
+        pv_rotation(rotation, source, output)
+
+def pv_rotation(pvconfig: Path,
+                source: Source,
+                outdir: Path):
+    """Calculates and model rotation PV maps."""
+    pvmaps = pv_extractor(pvconfig, source, outdir, recenter=True)
 
     # Fit gradient
-    plotname = figures / source.name / array / 'pvmaps_streams.png'
-    flags = ['--bunit', 'mJy/beam', '--outdir', f'{pvout}', '--plotname',
-             f'{plotname}']
-    print(pvmaps)
-    pvmap_fitter(list(map(str, pvmaps)) + flags)
-
-def pv_rotation(pvconfig, source, outdir, figures, array):
-    pvout = outdir / 'pvmaps'
-    pvmaps = pv_extractor(pvconfig, source, pvout, recenter=True)
-
-    # Fit gradient
-    plotname = figures / source.name / array / 'pvmaps_rotation.png'
-    flags = ['--bunit', 'mJy/beam', '--outdir', f'{pvout}', '--plotname',
-             f'{plotname}', '--function', 'plot']
-    pvmap_fitter(list(map(str, pvmaps)) + flags)
+    #plotname = figures / source.name / array / 'pvmaps_rotation.png'
+    #flags = ['--bunit', 'mJy/beam', '--outdir', f'{pvout}', '--plotname',
+    #         f'{plotname}', '--function', 'plot']
+    #pvmap_fitter(list(map(str, pvmaps)) + flags)
 
 def split_moments(source, outdir, configs, figures, array,
                   #molecules=['SiO', '(13)CO'],
@@ -422,14 +417,14 @@ if __name__ == '__main__':
         1: crop_line,
         2: moments,
         3: moment1_gradients,
+        4: pv_maps,
     #    2: split_moments,
-    #    3: pv_maps,
     #    4: extract_cassis,
     #    5: cassis_to_fits,
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 4, 5, 6, 7,8]
+    skip = [1, 2, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
