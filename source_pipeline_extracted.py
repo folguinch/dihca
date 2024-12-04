@@ -312,7 +312,9 @@ def pv_maps(source: Source,
             array: str):
     """Calculate different types of PV maps."""
     # Search for configs
-    rotation = configs / 'pvmaps' / f'{source.name}_{hmc}_rotation.cfg'
+    rotation = (source.config_file.parent /
+                'pvmaps' /
+                f'{source.name}_{hmc}_rotation.cfg')
     output = outdir / f'{hmc}_pvmaps'
     output.mkdir(parents=True, exist_ok=True)
     if rotation.is_file():
@@ -424,7 +426,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 2, 5, 6, 7,8]
+    skip = [1, 2, 3, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
