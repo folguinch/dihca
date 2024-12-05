@@ -427,7 +427,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 2, 3, 5, 6, 7,8]
+    skip = [1, 3, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
@@ -443,7 +443,7 @@ if __name__ == '__main__':
     #                  'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
     #sources = ['G14.22-0.50_S']
     #sources = sources_490kHz
-    sources = ['G11.92-0.61']
+    sources = SOURCES
 
     # Iterate over source config files
     config_dir = configs / 'extracted'
