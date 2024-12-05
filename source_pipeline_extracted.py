@@ -215,7 +215,7 @@ def moments(source: Source,
             molecules: Sequence[str] = ('CH3OH',),
             qns_mol: Dict = LINE_TRANSITIONS):
     """Calculate different types of moments."""
-    half_width = {488: 10, 976: 5}
+    half_width = {488: 15, 976: 10}
     for mol in molecules:
         # Find what molecules are in the source
         configs_with_mol = search_molecule(source, mol, array, line_filter=mol)
@@ -246,7 +246,8 @@ def moments(source: Source,
                 
                 # Compute moments
                 try:
-                    name = f'{norm_mol}_{norm_qns}'
+                    name = (f'{norm_mol}_{norm_qns}_'
+                            f'width{half_width[chanwidth]*2}')
                     moldir = outdir / f'{hmc}_moments'
                     moldir.mkdir(parents=True, exist_ok=True)
                     # Symmetric
