@@ -34,6 +34,11 @@ SOURCES_490 = ('G14.22-0.50_S', 'G24.60+0.08', 'G29.96-0.02',
                'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N')
 SOURCES = SOURCES_970 + SOURCES_490
 
+# Source-specific half widths
+HWIDTHS = {
+    'G11.92-0.61': 10,
+}
+
 # Recommended line lists
 LINE_LISTS = {
     '(13)CO': 'JPL',
@@ -235,6 +240,7 @@ def moments(source: Source,
                 cube = src_cfg['file']
                 norm_qns = normalize_qns(qns)
                 chanwidth = int(src_cfg['chan_width'].split()[0])
+                half_width = HWIDTHS.get(source.name, half_width[chanwidth])
                 
                 # Moment flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
@@ -252,7 +258,7 @@ def moments(source: Source,
                 # Compute moments
                 try:
                     name = (f'{norm_mol}_{norm_qns}_'
-                            f'width{half_width[chanwidth]*2}')
+                            f'width{half_width*2}')
                     moldir = outdir / f'{hmc}_moments'
                     moldir.mkdir(parents=True, exist_ok=True)
                     # Symmetric
