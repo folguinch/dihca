@@ -268,8 +268,8 @@ def moments(source: Source,
                                  cube, str(moldir / name), '0', '1', '2'])
                     # Local
                     print('-' * 20 + 'Local' + '-' * 20)
-                    local_moments([cube, str(moldir / name), '--win_halfwidth',
-                                   f'{half_width[chanwidth]}',
+                    local_moments([cube, str(moldir / name),
+                                   '--win_halfwidth', f'{half_width}',
                                    '--moments', '1', '2'] + flags)
                     # Moving
                     print('-' * 20 + 'Moving' + '-' * 20)
