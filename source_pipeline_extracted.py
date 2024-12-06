@@ -264,7 +264,7 @@ def moments(source: Source,
                     # Symmetric
                     print('-' * 20 + 'Symmetric' + '-' * 20)
                     filenames = symmetric_moments(
-                        flags + ['--win_halfwidth', f'{half_width[chanwidth]}',
+                        flags + ['--win_halfwidth', f'{half_width}',
                                  cube, str(moldir / name), '0', '1', '2'])
                     # Local
                     print('-' * 20 + 'Local' + '-' * 20)
@@ -438,7 +438,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [2, 3, 4]
+    skip = [1, 4]
     array = 'c5c8'
 
     # Read sources from command line
@@ -452,7 +452,7 @@ if __name__ == '__main__':
     #                  'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
     #                  'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
     #                  'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
-    sources = ['G336.01-0.82']
+    sources = ['G336.01-0.82', 'G11.92-0.61']
     #sources = SOURCES
 
 
