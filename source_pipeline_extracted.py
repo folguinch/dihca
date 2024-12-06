@@ -54,21 +54,21 @@ LINE_LISTS = {
 
 # Molecules and transitions of interest
 LINE_TRANSITIONS = {
-    'CH3OH': ('4(2,3)-5(1,4)A,vt=0',       #spw0
-              '5(4,2)-6(3,3)E,vt=0',
+    'CH3OH': (#'4(2,3)-5(1,4)A,vt=0',       #spw0
+              #'5(4,2)-6(3,3)E,vt=0',
               '18(3,15)-17(4,14)A,vt=0',
-              '10(2,9)-9(3,6)A,vt=0',      #spw1
-              '10(2,8)-9(3,7)A,vt=0',
-              '18(3,16)-17(4,13)A,vt=0',
-              '4(-2,3)-3(-1,2)E,vt=0',      #spw2
-              '5(-1,4)-4(-2,3)E,vt=0',
-              '20(-1,19)-20(-0,20)E,vt=0',
-              '8(-0,8)-7(-1,6)E,vt=0',     #spw3
-              '23(-5,18)-22(-6,17)E,vt=0',
-              '25(-3,23)-24(-4,20)E,vt=0',
-              '6(1,5)-7(2,6)--,vt=1',      # other
-              '13(3,10)-14(4,10)A,vt=2',
-              '34(-13,22)-33(-11,22)E,vt=0-vt=1',
+              #'10(2,9)-9(3,6)A,vt=0',      #spw1
+              #'10(2,8)-9(3,7)A,vt=0',
+              #'18(3,16)-17(4,13)A,vt=0',
+              #'4(-2,3)-3(-1,2)E,vt=0',      #spw2
+              #'5(-1,4)-4(-2,3)E,vt=0',
+              #'20(-1,19)-20(-0,20)E,vt=0',
+              #'8(-0,8)-7(-1,6)E,vt=0',     #spw3
+              #'23(-5,18)-22(-6,17)E,vt=0',
+              #'25(-3,23)-24(-4,20)E,vt=0',
+              #'6(1,5)-7(2,6)--,vt=1',      # other
+              #'13(3,10)-14(4,10)A,vt=2',
+              #'34(-13,22)-33(-11,22)E,vt=0-vt=1',
               ),
     '(13)CH3OH': (#'10(2,8)-9(3,7)++',
                   '5(1,5)-4(1,4)++',),
@@ -283,7 +283,7 @@ def moment1_gradients(source: Source,
     files += list(moldir.glob('*moment1_dilate[0-9].fits'))
     files += list(moldir.glob('*moment1_dilate10.fits'))
     for mom1 in files:
-        print('Calculating gradient on %s', mom1)
+        print('Calculating gradient on ', mom1)
         output = mom1.with_name(mom1.stem)
         stats = velocity_gradient([f'{mom1}', f'{output}'] + flags)
         stats_file = mom1.with_suffix('.gradient.txt')
@@ -427,7 +427,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 3, 5, 6, 7,8]
+    skip = [1, 4, 5, 6, 7,8]
     array = 'c5c8'
 
     # Read sources from command line
@@ -441,9 +441,9 @@ if __name__ == '__main__':
     #                  'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
     #                  'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
     #                  'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
-    #sources = ['G14.22-0.50_S']
-    #sources = sources_490kHz
-    sources = SOURCES
+    sources = ['G336.01-0.82']
+    #sources = SOURCES
+
 
     # Iterate over source config files
     config_dir = configs / 'extracted'
