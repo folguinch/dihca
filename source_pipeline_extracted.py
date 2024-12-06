@@ -168,14 +168,19 @@ def crop_line(source: Source,
             norm_qns = normalize_qns(qns)
 
             for src_cfg in configs_with_mol:
+                # Config
                 cube = src_cfg['file']
                 new_section = src_cfg.name + f'_{norm_mol}_{norm_qns}'
+
+                # Directories
+                moldir = outdir / 'line_cubes'
                 name = f'{hmc}_{norm_mol}_{norm_qns}_nchans{half_width*2}.fits'
                 out_cube = moldir / name
+
+                # Check
                 if new_section in source.config or out_cube.is_file():
                     print(f'Skipping {src_cfg.name}')
                     continue
-
                 
                 # Flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
@@ -194,7 +199,6 @@ def crop_line(source: Source,
                     flags += ['--rms'] + src_cfg['rms'].split()
 
                 # Compute moments
-                moldir = outdir / 'line_cubes'
                 try:
                     print(f'Working on cube: {cube}')
                     moldir.mkdir(parents=True, exist_ok=True)
@@ -428,7 +432,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 4, 5, 6, 7,8]
+    skip = [2, 3, 4]
     array = 'c5c8'
 
     # Read sources from command line
