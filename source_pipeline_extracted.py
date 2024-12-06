@@ -170,9 +170,12 @@ def crop_line(source: Source,
             for src_cfg in configs_with_mol:
                 cube = src_cfg['file']
                 new_section = src_cfg.name + f'_{norm_mol}_{norm_qns}'
-                if new_section in source.config:
+                name = f'{hmc}_{norm_mol}_{norm_qns}_nchans{half_width*2}.fits'
+                out_cube = moldir / name
+                if new_section in source.config or out_cube.is_file():
                     print(f'Skipping {src_cfg.name}')
                     continue
+
                 
                 # Flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
@@ -194,8 +197,6 @@ def crop_line(source: Source,
                 moldir = outdir / 'line_cubes'
                 try:
                     print(f'Working on cube: {cube}')
-                    name = f'{hmc}_{norm_mol}_{norm_qns}_nchans{half_width*2}.fits'
-                    out_cube = moldir / name
                     moldir.mkdir(parents=True, exist_ok=True)
                     subcube_extractor(flags + [cube, f'{out_cube}'])
                     processed.append(qns)
