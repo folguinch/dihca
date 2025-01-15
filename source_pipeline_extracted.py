@@ -36,7 +36,7 @@ SOURCES = SOURCES_970 + SOURCES_490
 
 # Source-specific half widths
 HWIDTHS = {
-    'G11.92-0.61': 10,
+    'G11.92-0.61': 12,
 }
 
 # Recommended line lists
@@ -452,7 +452,7 @@ if __name__ == '__main__':
     #                  'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
     #                  'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
     #                  'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
-    sources = ['G336.01-0.82', 'G11.92-0.61']
+    sources = ['G11.92-0.61']
     #sources = SOURCES
 
 
