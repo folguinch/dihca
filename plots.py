@@ -16,6 +16,7 @@ STEPS = {
 def by_source(sources, config_dir, skip, flags, filters=None):
     # Iterate over sources
     for source in sources:
+        print(source)
         # Iterate over steps
         for key, val in STEPS.items():
             if key in skip:
