@@ -37,6 +37,9 @@ SOURCES = SOURCES_970 + SOURCES_490
 # Source-specific half widths
 HWIDTHS = {
     'G11.92-0.61': 12,
+    'G29.96-0.02': 13,
+    'G335.579-0.272': 17,
+    'G335.78+0.17': 18,
 }
 
 # Recommended line lists
@@ -438,7 +441,7 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [1, 4]
+    skip = [4]
     array = 'c5c8'
 
     # Read sources from command line
