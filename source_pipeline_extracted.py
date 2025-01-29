@@ -21,6 +21,10 @@ from tile_plotter.plotter import plotter
 
 from common_paths import results, configs, figures
 
+# Molecules to analyze
+#MOLECULES = (CH3OH,)
+MOLECULES = (CH3CN,)
+
 # Source lists:
 SOURCES_970 = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
                'G34.43+0.24MM2', 'G35.13-0.74', 'G5.89-0.37',
@@ -162,7 +166,7 @@ def crop_line(source: Source,
               hmc: str,
               outdir: Path,
               array: str,
-              molecules: Sequence = ('CH3OH',),
+              molecules: Sequence = MOLECULES,
               qns_mol: Dict = LINE_TRANSITIONS,
               half_width: int = 20):
     """Crop a cube to extract line and add new section to source config."""
@@ -225,7 +229,7 @@ def moments(source: Source,
             hmc: str,
             outdir: Path,
             array: str,
-            molecules: Sequence[str] = ('CH3OH',),
+            molecules: Sequence[str] = MOLECULES,
             qns_mol: Dict = LINE_TRANSITIONS):
     """Calculate different types of moments."""
     half_width = {488: 15, 976: 10}
@@ -434,7 +438,7 @@ if __name__ == '__main__':
         1: crop_line,
         2: moments,
         3: moment1_gradients,
-        4: pv_maps,
+        #4: pv_maps,
     #    2: split_moments,
     #    4: extract_cassis,
     #    5: cassis_to_fits,
@@ -446,7 +450,8 @@ if __name__ == '__main__':
 
     # Read sources from command line
     sources = SOURCES
-    sources = ['G29.96-0.02', 'G335.579-0.272', 'G335.78+0.17']
+    sources = ['G11.92-0.61', 'G14.22-0.50_S', 'G333.12-0.56', 'G333.23-0.06',
+               'G333.46-0.16', 'G35.03+0.35_A', 'IRAS_180891732']
 
 
     # Iterate over source config files
