@@ -59,9 +59,10 @@ LINE_TRANSITIONS = {
     'CH3CN': [#'12(0)-11(0)',
               #'12(1)-11(1)',
               '12(2)-11(2)',
-              '12(3)-11(3)',
-              '12(4)-11(4)',
-              '12(8)-11(8)'],
+              #'12(3)-11(3)',
+              #'12(4)-11(4)',
+              #'12(8)-11(8)'
+              ],
     '(13)CH3CN': ['13(3)-12(3)',
                   '13(4)-12(4)'],
     'CH3CHO': ['2(2,0)-3(1,3)A++,vt=2'],
@@ -195,7 +196,8 @@ def moments(source,
             #molecules=['CH3CN', '(13)CH3CN', '(13)CH3OH', 'CH3CHO', 'HNCO',
             #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
             #molecules=['(13)CH3OH', 'CH3OH'],
-            molecules=['CH3OH'],
+            #molecules=['CH3OH'],
+            molecules=['CH3CN'],
             #molecules=['HC3N'],
             #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
             qns_mol=LINE_TRANSITIONS,
@@ -249,14 +251,14 @@ def moments(source,
                     continue
 
                 # Generate plot config
-                gen_plot_config(source, filenames, plot_template, cfg, mol=mol,
-                                qns=qns)
+                #gen_plot_config(source, filenames, plot_template, cfg, mol=mol,
+                #                qns=qns)
 
-                # Plot
-                plotname = figures / source.name / array
-                plotname.mkdir(parents=True, exist_ok=True)
-                plotname = plotname / f'{mol}_{norm_qns}.png'
-                #plotter([f'{cfg}', f'{plotname}'])
+                ## Plot
+                #plotname = figures / source.name / array
+                #plotname.mkdir(parents=True, exist_ok=True)
+                #plotname = plotname / f'{mol}_{norm_qns}.png'
+                ##plotter([f'{cfg}', f'{plotname}'])
 
 def line_cube(source,
               outdir,
@@ -266,11 +268,13 @@ def line_cube(source,
               #molecules=['CH3CN', '(13)CH3CN', '(13)CH3OH', 'CH3CHO', 'HNCO',
               #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
               #molecules=['(13)CH3OH', 'CH3OH'],
-              molecules=['CH3OH'],
+              #molecules=['CH3OH'],
+              molecules=['CH3CN'],
               #molecules=['HC3N'],
               #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
-              qns_mol={'CH3OH': ['18(3,15)-17(4,14)A,vt=0']},
-              spw='0',
+              qns_mol={'CH3OH': ['18(3,15)-17(4,14)A,vt=0'],
+                       'CH3CN': ['12(2)-11(2)']},
+              spw='3',
               # For 480 kHz
               half_width=10):
     # For 900 kHz
@@ -511,7 +515,10 @@ if __name__ == '__main__':
                       'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
                       'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
     #sources = ['G14.22-0.50_S']
-    sources = sources_490kHz
+    #sources = sources_490kHz
+    sources = ['G333.23-0.06', 'G11.92-0.61', 'G333.12-0.56', 'G333.46-0.16',
+               'G14.22-0.50_S', 'IRAS_180891732', 'G35.03+0.35_A',
+               'IRAS_165623959']
 
     # Iterate over source config files
     iterover = (configs / f'{source}.cfg' for source in sources)
