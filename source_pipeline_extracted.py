@@ -22,8 +22,8 @@ from tile_plotter.plotter import plotter
 from common_paths import results, configs, figures
 
 # Molecules to analyze
-#MOLECULES = (CH3OH,)
-MOLECULES = (CH3CN,)
+#MOLECULES = ('CH3OH',)
+MOLECULES = ('CH3CN',)
 
 # Source lists:
 SOURCES_970 = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
@@ -232,7 +232,7 @@ def moments(source: Source,
             molecules: Sequence[str] = MOLECULES,
             qns_mol: Dict = LINE_TRANSITIONS):
     """Calculate different types of moments."""
-    half_width = {488: 15, 976: 10}
+    half_width_def = {488: 15, 976: 10}
     for mol in molecules:
         # Find what molecules are in the source
         configs_with_mol = search_molecule(source, mol, array, line_filter=mol)
@@ -247,7 +247,7 @@ def moments(source: Source,
                 cube = src_cfg['file']
                 norm_qns = normalize_qns(qns)
                 chanwidth = int(src_cfg['chan_width'].split()[0])
-                half_width = HWIDTHS.get(source.name, half_width[chanwidth])
+                half_width = HWIDTHS.get(source.name, half_width_def[chanwidth])
                 
                 # Moment flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
@@ -438,7 +438,7 @@ if __name__ == '__main__':
         1: crop_line,
         2: moments,
         3: moment1_gradients,
-        #4: pv_maps,
+        4: pv_maps,
     #    2: split_moments,
     #    4: extract_cassis,
     #    5: cassis_to_fits,
