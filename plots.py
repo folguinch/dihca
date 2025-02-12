@@ -12,6 +12,7 @@ STEPS = {
     4: 'pv_maps',
     5: 'streamers'
 }
+BY_GROUP = True
 
 def by_source(sources, config_dir, skip, flags, filters=None):
     # Iterate over sources
@@ -40,6 +41,19 @@ def by_source(sources, config_dir, skip, flags, filters=None):
                 plotname = plot_dir / f'{name}.png'
                 plotter([f'{config}', f'{plotname}'] + flags)
 
+def by_group(config_dir, skip, flags):
+    for key, group in STEPS.items():
+        if key in skip:
+            continue
+        basename = f'group_{group}.*.cfg'
+        plot_dir = figures / f'group_{group}' / PLOT_TYPE
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        for config in config_dir.glob(basename):
+            print(f'Plotting {config}')
+            plotname = plot_dir / config.with_suffix('.png').stem
+            plotter([f'{config}', f'{plotname}'] + flags)
+            print('=' * 100)
+
 if __name__ == '__main__':
     skip = [1, 3, 4, 5]
     config_dir = configs / 'plots' / PLOT_TYPE
@@ -65,7 +79,9 @@ if __name__ == '__main__':
         flags = ['--pdf']
 
     # Plot
-    if len(sources) > 0:
+    if BY_GROUP:
+        by_group(config_dir, skip, flags)
+    elif len(sources) > 0:
         by_source(sources, config_dir, skip, flags, filters=filters)
     else:
         raise NotImplementedError
