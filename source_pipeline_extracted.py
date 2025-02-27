@@ -23,7 +23,8 @@ from common_paths import results, configs, figures
 
 # Molecules to analyze
 #MOLECULES = ('CH3OH',)
-MOLECULES = ('CH3CN',)
+MOLECULES = ('CH3OH', 'CH3CN',)
+#MOLECULES = ('CH3CN',)
 
 # Source lists:
 SOURCES_970 = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
@@ -36,14 +37,95 @@ SOURCES_490 = ('G14.22-0.50_S', 'G24.60+0.08', 'G29.96-0.02',
                'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
                'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
                'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N')
-SOURCES = SOURCES_970 + SOURCES_490
+WITH_LINES_PV = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61', 'G29.96-0.02',
+                 'G333.12-0.56', 'G333.23-0.06', 'G333.46-0.16',
+                 'G335.579-0.272', 'G335.78+0.17', 'G336.01-0.82',
+                 'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A', 'G35.13-0.74',
+                 'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
+                 'IRAS_180891732', 'IRAS_18182-1433', 'NGC_6334_I_N', 'W33A')
+#SOURCES = SOURCES_970 + SOURCES_490
+#SOURCES = WITH_LINES_PV
+SOURCES = ('G24.60+0.08',)
 
 # Source-specific half widths
 HWIDTHS = {
-    'G11.92-0.61': 12,
+    'G11.92-0.61': {
+        'hmc1': {
+            'CH3OH': 16,
+            'CH3CN': 25,
+            },
+        'hmc2': {
+            'CH3OH': 12,
+            'CH3CN': 12,
+            },
+        'hmc3': {
+            'CH3OH': 12,
+            'CH3CN': 12,
+            },
+        },
     'G29.96-0.02': 20,
+    'G333.12-0.56': {
+        'hmc1': {
+            'CH3OH': 17,
+            'CH3CN': 17,
+            },
+        'hmc2': {
+            'CH3OH': 15,
+            'CH3CN': 15,
+            },
+        },
     'G335.579-0.272': 20,
-    'G335.78+0.17': 20,
+    'G335.78+0.17': {
+        'hmc1': {
+            'CH3OH': 22,
+            },
+        'hmc2': {
+            'CH3OH': 20,
+            },
+        },
+    'G343.12-0.06': 10,
+    'IRAS_165623959': {
+        'hmc1': {
+            'CH3OH': 15,
+            'CH3CN': 15,
+            },
+        'hmc2': {
+            'CH3OH': 12,
+            'CH3CN': 12,
+            },
+        },
+    'IRAS_180891732': {
+        'hmc1': {
+            'CH3OH': 15,
+            'CH3CN': 20,
+            },
+        'hmc2': {
+            'CH3OH': 10,
+            'CH3CN': 15,
+            },
+        },
+    'NGC_6334_I_N': {
+        'hmc1': {
+            'CH3OH': 15,
+            'CH3CN': 15,
+            },
+        'hmc2': {
+            'CH3OH': 15,
+            'CH3CN': 15,
+            },
+        'hmc3': {
+            'CH3OH': 20,
+            'CH3CN': 20,
+            },
+        'hmc4': {
+            'CH3OH': 15,
+            'CH3CN': 15,
+            },
+        'hmc5': {
+            'CH3OH': 15,
+            'CH3CN': 15,
+            },
+        },
 }
 
 # Recommended line lists
@@ -169,6 +251,7 @@ def crop_line(source: Source,
               molecules: Sequence = MOLECULES,
               qns_mol: Dict = LINE_TRANSITIONS,
               half_width: int = 20):
+              #half_width: int = 30):
     """Crop a cube to extract line and add new section to source config."""
     for mol in molecules:
         configs_with_mol = search_molecule(source, mol, array)
@@ -248,6 +331,10 @@ def moments(source: Source,
                 norm_qns = normalize_qns(qns)
                 chanwidth = int(src_cfg['chan_width'].split()[0])
                 half_width = HWIDTHS.get(source.name, half_width_def[chanwidth])
+                try:
+                    half_width = half_width[hmc][mol]
+                except TypeError:
+                    pass
                 
                 # Moment flags
                 flags = ['--vlsr', f'{source.vlsr.value}',
@@ -450,8 +537,9 @@ if __name__ == '__main__':
 
     # Read sources from command line
     sources = SOURCES
-    sources = ['G11.92-0.61', 'G14.22-0.50_S', 'G333.12-0.56', 'G333.23-0.06',
-               'G333.46-0.16', 'G35.03+0.35_A', 'IRAS_180891732']
+    #sources = ['G11.92-0.61', 'G14.22-0.50_S', 'G333.12-0.56', 'G333.23-0.06',
+    #           'G333.46-0.16', 'G35.03+0.35_A', 'IRAS_180891732']
+    #sources = ['G11.1-0.12']
 
 
     # Iterate over source config files

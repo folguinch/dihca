@@ -516,7 +516,7 @@ if __name__ == '__main__':
                       'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
     #sources = ['G14.22-0.50_S']
     #sources = sources_490kHz
-    sources = ['G11.1-0.12']
+    sources = ['IRDC_182231243']
 
     # Iterate over source config files
     iterover = (configs / f'{source}.cfg' for source in sources)

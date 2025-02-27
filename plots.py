@@ -4,6 +4,7 @@ from tile_plotter.plotter import plotter
 
 from common_paths import configs, figures
 
+SKIP = [1, 3, 5]
 PLOT_TYPE = 'papers'
 STEPS = {
     1: 'continuum',
@@ -50,12 +51,12 @@ def by_group(config_dir, skip, flags):
         plot_dir.mkdir(parents=True, exist_ok=True)
         for config in config_dir.glob(basename):
             print(f'Plotting {config}')
-            plotname = plot_dir / config.with_suffix('.png').stem
+            plotname = plot_dir / config.with_suffix('.png').name
             plotter([f'{config}', f'{plotname}'] + flags)
             print('=' * 100)
 
 if __name__ == '__main__':
-    skip = [1, 3, 4, 5]
+    skip = SKIP
     config_dir = configs / 'plots' / PLOT_TYPE
 
     # Read sources from command line
