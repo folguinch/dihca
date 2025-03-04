@@ -1,7 +1,7 @@
 from pathlib import Path
 
-continuum = Path('../source_data/continuum')
-results = Path('../results')
-configs = Path('./configs')
-figures = Path('../figures')
+CONTINUUM = Path('../source_data/continuum')
+RESULTS = Path('../results')
+CONFIGS = Path('./configs')
+FIGURES = Path('../figures')
 

@@ -1,0 +1,163 @@
+"""Run MCMC modeling with FERIA for all sources."""
+from multiprocessing import Pool
+
+import emcee
+
+from .common_paths import RESULTS, CONFIGS
+from .source_pipeline_extracted import SAVED_MOLS
+from .feria_mcmc import log_posterior, Observation
+
+MOLECULE = 'CH3OH'
+TRANSITION = '18(3,15)-17(4,14)A,vt=0'
+SOURCES = {
+    'G335.579-0.272': ('hmc2',),
+}
+SECTIONS = {
+    'CH3OH': ('b6_c5c8_spw0_1000_CH3OH_18_3_15_-17_4_14_A_vt_0',
+              'CH3OH_spw0'),
+}
+NWALKERS, NSTEPS, NBURN = 120, 250, 180
+NCORE = 10
+
+FIXED_PARAMS = {
+    'rot': 1,
+    'rin': 'CB',
+    'ireheight': 0.,
+    'ireflare': 30,
+    'irenprof': -1.5,
+    'iretprof': -0.4,
+    'kepheight': 0.5,
+    'kepflare': 30,
+    'kepnprof': -1.5,
+    'keptprof': -0.4,
+    'cbdens': 1e-2,
+    'cbtemp': 50,
+    'pvra': 0.0,
+    'pvdec': 0.0,
+}
+#PARAMS = {
+#    'vsys': 0,
+#    'mass': 10,
+#    'rcb': 200,
+#    'incl': 60,
+#    #'pa': 
+#    'rout': 1000,
+#    'lw': 2.0,
+#}
+RANGES = {
+    'vsys': (-2, 2),
+    'mass': (3, 40),
+    'rcb': (50, 1000),
+    #'rin'
+    'incl': (0, 180),
+    'rout': (500, 5000),
+    'lw': (1., 10.0),
+}
+LABELS = {
+    'vsys': r'$\Delta v_{\rm sys}$ (km/s)',
+    'mass': r'$M_{c}$ ($M_\odot$)',
+    'rcb': '$R_{cb}$ (au)',
+    'rin': '$R_{in}$ (au)',
+    'incl': '$i$ (deg)',
+    'rout': r'$R_{\rm out}$',
+    'lw': 'Line width (km/s)',
+    'pa': 'P.A. (deg)',
+}
+
+def initialize_guesses(param_ranges, nwalkers):
+    # Produce guess from the given range of parameters
+    np.random.seed()
+    guesses = [np.random.uniform(par[0], par[1], nwalkers)
+               for key, par in param_ranges.items()]
+
+    return guesses
+
+def show_walkers(sampler, parameters, output):
+    # loop over the walkers and should how it converge
+    nwalkers = sampler.chain.shape[0]
+    ndim = len(parameters)
+    labels = [LABELS[key] for key in parameters]
+
+    plt.figure(figsize=(8, ndim*1.5))
+    for j in range(nwalkers):
+        for i in range(ndim):
+            plt.subplot(ndim, 1, i+1)
+            plt.plot(sampler.chain[j,:,i], ',')
+            plt.ylabel(labels[i], fontsize=14);
+            plt.xlabel('step', fontsize=14);
+
+    plt.savefig(output / 'mcmc_walkers.pdf', bbox_inches='tight')
+
+def show_bestfit_paras(sampler, parameters, output):
+
+    # show the summary plot of fitted parameters
+    plt.figure(figsize=(10, 10))
+    labels = [LABELS[key] for key in parameters]
+    corner.corner(sampler, labels=labels, quantiles=[0.16, 0.5, 0.84],
+                  show_titles=True)
+    plt.savefig(output / 'mcmc_corner.pdf', bbox_inches='tight')
+
+def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
+              nwalkers=NWALKERS, nsteps=NSTEPS, nburn=NBURN):
+    # initialize guesses
+    guesses = initialize_guesses(params_ranges, nwalkers)
+
+    # Run MCMC
+    posterior_kwargs = {'fixed_params': params_fixed,
+                        'ranges': params_ranges,
+                        'obs': obs,
+                        'outdir': outdir}
+    with Pool(ncore) as pool:
+       sampler = emcee.EnsembleSampler(
+           nwalkers,
+           len(params_ranges),
+           log_posterior,
+           kwargs=posterior_kwargs,
+           pool=pool,
+           parameter_names=list(params_ranges.keys()),
+       )
+       sampler.run_mcmc(guesses, nsteps)
+    
+    # Plots
+    show_walkers(sampler, params_ranges, outdir)
+    post = np.concatenate(sampler.chain[:, nburn:, :])
+    show_bestfit_paras(post, parameters, outdir)
+
+    # Print the best fit parameters
+    fout = outdir / 'mcmc_paramters.dat'
+    txtlines = []
+    for i, param in enumerate(param_ranges):
+       mcmc = np.percentile(post[:, i], [16, 50, 84])
+       q = np.diff(mcmc)
+       txtlines.append(f'{param}: {mcmc[1]:.4f}   {q[0]:.4f}   {q[1]:.4f}')
+    fout.write_text('\n'.join(txtlines)
+
+if __name__ == '__main__':
+    # Set config sections
+    section_src, section_pv = SECTIONS[MOLECULE]
+
+    # Load molecule information
+    molecule = Molecule.from_json(SAVED_MOLS / SAVED_MOLS[MOLECULE])
+    restfreq = molecule.transition_info(TRANSITION).restfreq
+
+    for src, hmcs in SOURCES.items():
+        for hmc in hmcs:
+           # Open pv config
+           pvconfig_file = CONFIG / f'extracted/pvmaps/{src}_{hmc}_rotation.cfg'
+           pvconfig = ConfigParser()
+           pvconfig.read(pvconfig_file)
+
+           # Create observation
+           config_file = CONFIG / f'extracted/{src}_{hmc}.cfg'
+           obs = Observation(config_file, section_src, MOLECULE, restfreq)
+
+           # Parameter ranges
+           pa = pvconfig.getfloat(section_pv, 'disk_pa')
+           params_ranges = RANGES | {'pa': (pa - 20, pa + 20)}
+           params_fixed = FIXED_PARAMS | {pvpa: pa}
+
+            # Run MCMC
+            outdir = RESULTS / src / f'c5c8/per_hot_core/{hmc}_feria_mcmc'
+            outdir.mkdir(parents=False, exist_ok=True)
+            calc_mcmc(params_ranges, params_fixed, obs, outdir)
+

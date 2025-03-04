@@ -1,4 +1,4 @@
-parameter	# Name of the output fits file, 'parameter' to name after the parameters
+$output 	# Name of the output fits file, 'parameter' to name after the parameters
 n           # Overwrite? (y/n)
 
 ### Parameters for the source ###
