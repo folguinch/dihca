@@ -19,7 +19,7 @@ from line_little_helper.utils import normalize_qns
 from line_little_helper.velocity_gradient import velocity_gradient
 from tile_plotter.plotter import plotter
 
-from common_paths import results, configs, figures
+from common_paths import RESULTS, CONFIGS, FIGURES
 
 # Molecules to analyze
 #MOLECULES = ('CH3OH',)

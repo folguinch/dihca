@@ -1,11 +1,17 @@
 """Run MCMC modeling with FERIA for all sources."""
 from multiprocessing import Pool
+from configparser import ConfigParser
+import datetime
 
+import corner
 import emcee
+import numpy as np
+import matplotlib.pyplot as plt
+from line_little_helper.molecule import Molecule
 
-from .common_paths import RESULTS, CONFIGS
-from .source_pipeline_extracted import SAVED_MOLS
-from .feria_mcmc import log_posterior, Observation
+from common_paths import RESULTS, CONFIGS
+from source_pipeline_extracted import SAVED_MOLS
+from feria_mcmc import log_posterior, Observation, Model
 
 MOLECULE = 'CH3OH'
 TRANSITION = '18(3,15)-17(4,14)A,vt=0'
@@ -17,11 +23,13 @@ SECTIONS = {
               'CH3OH_spw0'),
 }
 NWALKERS, NSTEPS, NBURN = 120, 250, 180
-NCORE = 10
+NCORE = 7
+#NWALKERS, NSTEPS, NBURN = 15, 30, 10
+#NCORE = 10
 
 FIXED_PARAMS = {
     'rot': 1,
-    'rin': 'CB',
+    #'rin': 'CB',
     'ireheight': 0.,
     'ireflare': 30,
     'irenprof': -1.5,
@@ -48,7 +56,7 @@ RANGES = {
     'vsys': (-2, 2),
     'mass': (3, 40),
     'rcb': (50, 1000),
-    #'rin'
+    'rin': (10, 100),
     'incl': (0, 180),
     'rout': (500, 5000),
     'lw': (1., 10.0),
@@ -70,7 +78,7 @@ def initialize_guesses(param_ranges, nwalkers):
     guesses = [np.random.uniform(par[0], par[1], nwalkers)
                for key, par in param_ranges.items()]
 
-    return guesses
+    return np.array(guesses).T
 
 def show_walkers(sampler, parameters, output):
     # loop over the walkers and should how it converge
@@ -103,10 +111,13 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
     guesses = initialize_guesses(params_ranges, nwalkers)
 
     # Run MCMC
+    start = datetime.datetime.now()
+    out_iter = outdir / 'models'
+    out_iter.mkdir(parents=False, exist_ok=True)
     posterior_kwargs = {'fixed_params': params_fixed,
                         'ranges': params_ranges,
                         'obs': obs,
-                        'outdir': outdir}
+                        'outdir': out_iter}
     with Pool(ncore) as pool:
        sampler = emcee.EnsembleSampler(
            nwalkers,
@@ -116,45 +127,57 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
            pool=pool,
            parameter_names=list(params_ranges.keys()),
        )
-       sampler.run_mcmc(guesses, nsteps)
+       sampler.run_mcmc(guesses, nsteps, progress=True)
     
     # Plots
     show_walkers(sampler, params_ranges, outdir)
     post = np.concatenate(sampler.chain[:, nburn:, :])
-    show_bestfit_paras(post, parameters, outdir)
+    show_bestfit_paras(post, params_ranges, outdir)
 
     # Print the best fit parameters
     fout = outdir / 'mcmc_paramters.dat'
     txtlines = []
-    for i, param in enumerate(param_ranges):
+    final_params = {}
+    for i, param in enumerate(params_ranges):
        mcmc = np.percentile(post[:, i], [16, 50, 84])
        q = np.diff(mcmc)
        txtlines.append(f'{param}: {mcmc[1]:.4f}   {q[0]:.4f}   {q[1]:.4f}')
-    fout.write_text('\n'.join(txtlines)
+       final_params[param] = mcmc[1]
+    fout.write_text('\n'.join(txtlines))
+
+    # Compute best model
+    best_model = Model(list(params_fixed.keys()),
+                       **(final_params | params_fixed))
+    best_model_cube = best_model(outdir, obs)
+    end = datetime.datetime.now()
+
+    print(start)
+    print(end)
+    print(end - start)
 
 if __name__ == '__main__':
     # Set config sections
     section_src, section_pv = SECTIONS[MOLECULE]
 
     # Load molecule information
-    molecule = Molecule.from_json(SAVED_MOLS / SAVED_MOLS[MOLECULE])
+    molecule = Molecule.from_json(SAVED_MOLS[MOLECULE])
     restfreq = molecule.transition_info(TRANSITION).restfreq
 
     for src, hmcs in SOURCES.items():
         for hmc in hmcs:
-           # Open pv config
-           pvconfig_file = CONFIG / f'extracted/pvmaps/{src}_{hmc}_rotation.cfg'
-           pvconfig = ConfigParser()
-           pvconfig.read(pvconfig_file)
+            # Open pv config
+            pvconfig_file = CONFIGS / f'extracted/pvmaps/{src}_{hmc}_rotation.cfg'
+            pvconfig = ConfigParser()
+            pvconfig.read(pvconfig_file)
 
-           # Create observation
-           config_file = CONFIG / f'extracted/{src}_{hmc}.cfg'
-           obs = Observation(config_file, section_src, MOLECULE, restfreq)
+            # Create observation
+            config_file = CONFIGS / f'extracted/{src}_{hmc}.cfg'
+            obs = Observation(config_file, section_src, MOLECULE, restfreq)
 
-           # Parameter ranges
-           pa = pvconfig.getfloat(section_pv, 'disk_pa')
-           params_ranges = RANGES | {'pa': (pa - 20, pa + 20)}
-           params_fixed = FIXED_PARAMS | {pvpa: pa}
+            # Parameter ranges
+            pa = pvconfig.getfloat(section_pv, 'disk_pa')
+            params_ranges = RANGES | {'pa': (pa - 20, pa + 20)}
+            params_fixed = FIXED_PARAMS | {'pvpa': pa}
 
             # Run MCMC
             outdir = RESULTS / src / f'c5c8/per_hot_core/{hmc}_feria_mcmc'

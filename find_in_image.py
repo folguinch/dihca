@@ -76,10 +76,10 @@ sources = {
     #'G351.77-0.54': [
     #    SkyCoord('17h26m42.531s', '-36d09m17.376s', frame='icrs')
     #],
-    'IRAS_165623959': [
-        SkyCoord('16h59m41.62564s', '-40d03m43.6385s', frame='icrs'),
-        SkyCoord('16h59m41.08769s', '-40d03m39.0848s', frame='icrs')
-    ],
+    #'IRAS_165623959': [
+    #    SkyCoord('16h59m41.62564s', '-40d03m43.6385s', frame='icrs'),
+    #    SkyCoord('16h59m41.08769s', '-40d03m39.0848s', frame='icrs')
+    #],
     #'IRAS_180891732': [
     #    SkyCoord('18h11m51.45454s', '-17d31m28.8163s', frame='icrs'),
     #    SkyCoord('18h11m51.39962s', '-17d31m29.9457s', frame='icrs')
@@ -93,9 +93,9 @@ sources = {
     #    SkyCoord('18h21m09.04928s', '-14d31m47.7925s', frame='icrs'),
     #    SkyCoord('18h21m09.01686s', '-14d31m47.9397s', frame='icrs')
     #],
-    #'IRDC_182231243': [
-    #    SkyCoord('18h25m08.55193s', '-12d45m23.7189s', frame='icrs')
-    #],
+    'IRDC_182231243': [
+        SkyCoord('18h25m08.55193s', '-12d45m23.7189s', frame='icrs')
+    ],
     #'NGC6334I': [
     #    SkyCoord('17h20m53.416s', '-35d46m58.397s', frame='icrs'),
     #    SkyCoord('17h20m53.413s', '-35d46m57.881s', frame='icrs')
@@ -109,6 +109,12 @@ sources = {
     #],
     #'W33A': [
     #    SkyCoord('18h14m39.51004s', '-17d52m00.1338s', frame='icrs')
+    #],
+    #'IRAS_18337-0743':[
+    #    SkyCoord('18h36m41.16616s', '-7d39m24.0363s', frame='icrs'),
+    #    SkyCoord('18h36m40.97008s', '-7d39m09.1196s', frame='icrs'),
+    #    SkyCoord('18h36m40.80607s', '-7d39m15.6003s', frame='icrs'),
+    #    SkyCoord('18h36m40.73463s', '-7d39m16.1771s', frame='icrs')
     #],
 }
 
