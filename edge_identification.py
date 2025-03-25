@@ -12,6 +12,8 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.wcs import WCS
 from line_little_helper.molecule import Molecule
 from toolkit.astro_tools.masking import mask_structures
+from toolkit.astro_tools.images import get_coord_axes
+from toolkit.array_utils import save_struct_array
 
 from pipeline_feria import SOURCES, SECTIONS
 from source_pipeline_extracted import SAVED_MOLS
@@ -20,19 +22,15 @@ MOLECULE = 'CH3OH'
 TRANSITION = '18(3,15)-17(4,14)A,vt=0'
 RESULTS = Path('/mnt/metis/dihca/results')
 
-class BrokenPowerLaw(Fittable1DModel):
+class PiecewisePowerLaw(Fittable1DModel):
     amplitude = Parameter()
-    x_mid = Parameter()
     x_0 = Parameter()
     alpha = Parameter()
     cons = Parameter()
-
-    #def __init__(self, amplitude, x_0, alpha, cons):
-    #    super().__init__(amplitude=amplitude, x_0=x_0, alpha=alpha)
-    #    self.cons.value = cons
+    x_mid = Parameter()
 
     @staticmethod
-    def evaluate(x, amplitude, x_mid, x_0, alpha, cons):
+    def evaluate(x, amplitude, x_0, alpha, cons, x_mid):
         mask = x < x_mid
         vals = np.zeros(len(x))
         vals[mask] = models.PowerLaw1D.evaluate(np.abs(x[mask] - x_mid),
@@ -46,7 +44,7 @@ class BrokenPowerLaw(Fittable1DModel):
         return vals + cons
 
     @staticmethod
-    def fit_deriv(x, amplitude, x_mid, x_0, alpha, cons):
+    def fit_deriv(x, amplitude, x_0, alpha, cons, x_mid):
         mask = x < x_mid
 
         d_amp_neg, d_x0_neg, d_alpha_neg  = models.PowerLaw1D.fit_deriv(
@@ -105,14 +103,12 @@ def find_edge(slcs, fn, data, beam, delta=2, inverted=False):
 
     return np.array(edge_points), np.array(edge_errors)*beam.unit
 
-def get_edge(fitsfile, outdir, rms, nsigma=3, delta=2, quadrant=1):
+def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1):
     # Open data
     image = fits.open(fitsfile)[0]
     mask = image.data > rms * nsigma
     beam = np.sqrt(image.header['BMAJ'] * image.header['BMIN']) * u.deg
     beam = beam.to(u.arcsec) * gaussian_fwhm_to_sigma
-
-    # Get axes
 
     # Get mask of the largest object
     mask, labels, nlabels = mask_structures(mask)
@@ -120,6 +116,11 @@ def get_edge(fitsfile, outdir, rms, nsigma=3, delta=2, quadrant=1):
     max_component = component_sizes == np.nanmax(component_sizes[1:])
     max_mask = max_component[labels]
     mask[~max_mask] = False
+
+    # Save mask
+    hdu = fits.PrimaryHDU(data=mask.astype(int), header=image.header)
+    hdu.writeto(fitsfile.with_suffix(f'.{nsigma}sigma.mask.fits'),
+                overwrite=True)
 
     # Get structures
     image_masked = np.ma.array(image.data, mask=~mask)
@@ -136,82 +137,141 @@ def get_edge(fitsfile, outdir, rms, nsigma=3, delta=2, quadrant=1):
                                                beam, delta=delta)
     edges_lower, edges_lower_error = find_edge(slcs[::-1], fn_lower, image.data,
                                                beam, delta=delta, inverted=True)
-
-    # Fit power law
-    xmid = image.data.shape[1] / 2
-    ind1 = np.nanargmax(np.abs(edges_upper[:, 0] - xmid))
-    ind2 = np.nanargmax(np.abs(edges_lower[:, 0] - xmid))
-    vsys = (edges_upper[ind1, 1] + edges_lower[ind2, 1]) / 2
-    fit_x = np.append(edges_upper[:, 0], edges_lower[:, 0])
-    ind = np.argsort(fit_x)
-    fit_y = np.append(edges_upper[:, 1], edges_lower[:, 1])
-    fit_x = fit_x[ind]
-    fit_y = fit_y[ind]
-    amplitude = np.max(fit_y) - vsys
-    x_0 = np.abs(np.min(fit_x))
-    # Upper
-    fitter = fitting.SLSQPLSQFitter()
-    model = BrokenPowerLaw(amplitude=amplitude,
-                           x_mid=xmid,
-                           x_0=x_0,
-                           alpha=0.5,
-                           cons=vsys)
-    #model.alpha.fixed = True
-    fitted = fitter(model, fit_x, fit_y)
-    print(fitted)
-    #ind = np.nanargmin(np.abs(edges_upper[:, 0] - xmid))
-    #vsysm = models.Const1D(amplitude=vsys)
-    #pwlaw = models.PowerLaw1D(amplitude=edges_upper[ind, 1] - vsys,
-    #                          x_0=edges_upper[ind, 0] - xmid,
-    #                          alpha=0.5)
-    #model = pwlaw + vsysm
-    #model.alpha_0.fixed = True
-    ##model.x_0_0.min = min(xmid, edges_upper[ind, 0])
-    ##model.x_0_0.max = edges_upper[ind, 0]
-    ##model.amplitude_0.max = edges_upper[ind, 1] - vsys
-    ##model.amplitude_1.min = vsys - 3
-    ##model.amplitude_1.max = vsys + 3
-    #fit_upper = fitter(model, edges_upper[:, 0] - xmid, edges_upper[:,1])
-    ## Lower
-    #ind = np.nanargmin(np.abs(edges_lower[:, 0] - xmid))
-    #pwlaw = models.PowerLaw1D(amplitude=edges_lower[ind, 1] - vsys,
-    #                          x_0=np.abs(edges_lower[ind, 0] - xmid),
-    #                          alpha=0.5)
-    #model = pwlaw + vsysm
-    #model.alpha_0.fixed = True
-    ##model.x_0_0.min = min(xmid, edges_lower[ind, 0])
-    #model.x_0_0.max = edges_lower[ind, 0]
-    #model.amplitude_0.min = edges_lower[ind, 1] - vsys
-    #sign_lower = np.sign(edges_lower[:,0]-xmid)[0]
-    #fit_x = np.abs(edges_lower[:,0] - xmid)
-    #fit_lower = fitter(model, fit_x, edges_lower[:,1])
-
-    newx = np.linspace(0, image.shape[1])
-    fig, (ax1, ax2) = plt.subplots(ncols=2)
-    ax1.plot(np.log10(np.abs(fit_x - fitted.x_mid.value)),
-             np.log10(np.abs(fit_y - fitted.cons.value)),
-             'kx')
-    ax2.imshow(image.data, origin='lower')
-    ax2.contour(image.data, levels=[rms * nsigma])
-    ax2.plot(fit_x, fit_y, 'ro')
-    ax2.plot(newx, fitted(newx), 'k-')
-    #ax.plot(edges_upper[:,0], edges_upper[:,1], 'ro')
-    #ax.plot(sign_lower * fit_x + xmid, edges_lower[:,1], 'bo')
-    #ax.plot(newx + xmid, fit_upper(newx), 'k-')
-    #ax.plot(sign_lower * newx + xmid, fit_lower(newx), 'k-')
-    ax2.axhline(vsys, color='g', ls=':')
-    ax2.axhline(fitted.cons.value, color='g', ls='--')
-    ax2.axvline(fitted.x_mid.value, color='g', ls='--')
-    ax2.axvline(fitted.x_0.value, color='g', ls='--')
-    ax2.axvline(xmid, color='g', ls=':')
-    ax2.set_xlim(0, image.shape[1])
-    ax2.set_ylim(image.shape[0], 0)
-    fig.savefig(outdir / 'edges.png')
+    edges_x = np.append(edges_upper[:, 0], edges_lower[:, 0])
+    edges_y = np.append(edges_upper[:, 1], edges_lower[:, 1])
+    errors = np.append(edges_upper_error, edges_lower_error)
+    ind = np.argsort(edges_x)
+    edges_x = edges_x[ind]
+    edges_y = edges_y[ind]
+    errors = errors[ind]
 
     # Convert to coordinates
     wcs = WCS(image.header)
     coords_upper = wcs.pixel_to_world_values(edges_upper)
     coords_lower = wcs.pixel_to_world_values(edges_lower)
+    coords = coords_upper + coords_lower
+    edges_x = np.array([coord[0] for coord in coords])
+    edges_y = np.array([coord[1] for coord in coords])
+    errors = errors * image.header['CDELT1']
+
+    # Get vsys
+    xcoords_upper = np.array([coords_upper[0] for coord in coords_upper])
+    xcoords_lower = np.array([coords_lower[0] for coord in coords_lower])
+    ind1 = np.nanargmax(np.abs(xcoords_upper))
+    ind2 = np.nanargmax(np.abs(xcoords_lower))
+    vsys = (coords_upper[ind1][1] + coords_lower[ind2][1]) / 2
+
+    # Save edges to file
+    head1 = image.header['CTYPE1']
+    head2 = image.header['CTYPE2']
+    unit1 = u.Unit(image.header['CUNIT1'])
+    unit2 = u.Unit(image.header['CUNIT2'])
+    edges_x = edges_x * unit1
+    edges_y = edges_y * unit2
+    edges_x = edges_x.to(u.arcsec)
+    edges_y = edges_y.to(u.km/u.s)
+    errors = errors.to(u.arcsec)
+    yerr = np.abs(image.header['CDELT2']) * unit2
+    yerr = yerr.to(u.km/u.s)
+    as_sarray = np.array(list(zip(edges_x.value,
+                                  errors.value,
+                                  edges_y.value,
+                                  np.repeat(yerr.value, len(errors)))),
+                         dtype=[(head1, float), (f'{head1}_error', float),
+                                (head2, float), (f'{head2}_error', float)])
+    units = {head1: u.arcsec,
+             f'{head1}_error': u.arcsec,
+             head2: u.km/u.s,
+             f'{head2}_error': u.km/u.s,
+             }
+    save_struct_array(fitsfile.with_suffix('.edge.dat'), as_sarray, units,
+                      fmt='%10.8e\t')
+
+    # Convert to quantitites
+    vsys = vsys * unit2
+
+    return (edges_x, edges_y), vsys.to(u.km/u.s)
+
+
+def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
+    # Open data
+    image = fits.open(fitsfile)[0]
+    xaxis, yaxis = get_coord_axes(image)
+    xaxis = xaxis.to(u.arcsec)
+    yaxis = yaxis.to(u.km/u.s)
+
+    # Fit power law
+    print('Initial vsys:', vsys)
+    fit_x, fit_y = edges
+    amplitude = np.max(fit_y) - vsys.to(fit_y.unit)
+    x_0 = 100 / distance.to(u.pc).value * u.arcsec
+    x_0 = x_0.to(fit_x.unit)
+    print('100 au to arcec: ', x_0)
+    # Upper
+    fitter = fitting.SLSQPLSQFitter()
+    model = PiecewisePowerLaw(amplitude=-amplitude.value,
+                              x_0=x_0.value,
+                              alpha=0.5,
+                              cons=vsys.to(fit_y.unit).value,
+                              x_mid=0.)
+    model.x_0.fixed = True
+    unrestricted = fitter(model, fit_x.value, fit_y.value)
+    model.alpha.fixed = True
+    model.amplitude = unrestricted.amplitude
+    model.cons = unrestricted.cons
+    model.x_mid = unrestricted.x_mid
+    keplerian = fitter(model, fit_x.value, fit_y.value)
+
+    # Plot section
+    params = [f'{unrestricted.amplitude.value}',
+              f'{unrestricted.x_0.value}',
+              f'{unrestricted.alpha.value}',
+              f'{unrestricted.cons.value}',
+              f'{unrestricted.x_mid.value}']
+    params_txt = ' '.join(params)
+    text = ['[edge_fit]',
+            'function = piecewise_powerlaw',
+            f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
+            f'coeficients = {params_txt}',
+            f'yunit = {fit_x.unit}']
+    print('\n'.join(text))
+
+    # Quick look at fit
+    newx = np.linspace(0., xaxis[-1].value, 500)
+    extent = [xaxis[0].value, xaxis[-1].value,
+              yaxis[0].value, yaxis[-1].value]
+    fig, ax = plt.subplots()
+    ax.imshow(image.data, origin='lower', extent=extent)
+    ax.contour(image.data, levels=[rms * nsigma], extent=extent)
+    ax.plot(fit_x, fit_y, 'ro')
+    ax.plot(newx + unrestricted.x_mid,
+            unrestricted(newx + unrestricted.x_mid),
+            -newx + unrestricted.x_mid,
+            unrestricted(-newx + unrestricted.x_mid),
+            linestyle='-', color='k')
+    #ax.plot(-newx + unrestricted.x_mid,
+    #        unrestricted(-newx + unrestricted.x_mid), 'k-')
+    ax.plot(newx + keplerian.x_mid,
+            keplerian(newx + keplerian.x_mid), 'b--')
+    ax.plot(-newx + keplerian.x_mid,
+            keplerian(-newx + keplerian.x_mid), 'b--')
+    ax.axhline(unrestricted.cons.value, color='g', ls=':')
+    ax.axhline(unrestricted.cons.value, color='g', ls='--')
+    ax.axvline(unrestricted.x_mid.value, color='g', ls='--')
+    ax.set_xlim(xaxis[0].value, xaxis[-1].value)
+    ax.set_ylim(yaxis[0].value, yaxis[-1].value)
+    ax.set_xlabel('Offset (arcsec)')
+    ax.set_ylabel('Radial Velocity (km/s)')
+    ax.set_aspect('auto') 
+    fig.savefig(fitsfile.with_suffix('.edges.png'))
+
+    fig, ax = plt.subplots()
+    ax.plot(np.log10(np.abs(fit_x.value - unrestricted.x_mid.value)),
+            np.log10(np.abs(fit_y.value - unrestricted.cons.value)),
+            'kx')
+    ax.set_xlabel('log(Offset / arcsec)')
+    ax.set_ylabel('log(|$v_{rad} - v_{sys}$| / km/s)')
+    fig.savefig(fitsfile.with_suffix('.profile.png'))
 
 if __name__ == '__main__':
     # Set config sections
@@ -220,6 +280,8 @@ if __name__ == '__main__':
     # Load molecule information
     molecule = Molecule.from_json(SAVED_MOLS[MOLECULE])
     restfreq = molecule.transition_info(TRANSITION).restfreq
+    distance = 3.25 * u.kpc
+    rms = 1.5e-3
 
     for src, hmcs in SOURCES.items():
         for hmc in hmcs:
@@ -227,4 +289,5 @@ if __name__ == '__main__':
             fitsfile = fitsfile / 'G335.579-0.272_hmc2_rotation.CH3OH_spw0.ra247.74430_dec-48.73089.PA202.fits'
             outdir = RESULTS / f'{src}/c5c8/per_hot_core/{hmc}_pvmaps'
             outdir.mkdir(exist_ok=True)
-            get_edge(fitsfile, outdir, 1.5e-3)
+            edges, vsys = get_edge(fitsfile, 1.5e-3)
+            fit_edge(fitsfile, edges, vsys, distance, rms)
