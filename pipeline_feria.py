@@ -28,7 +28,7 @@ NCORE = 7
 #NCORE = 10
 
 FIXED_PARAMS = {
-    'rot': 1,
+    'rot': -1,
     #'rin': 'CB',
     'ireheight': 0.,
     'ireflare': 30,
