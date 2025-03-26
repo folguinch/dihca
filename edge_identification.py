@@ -2,6 +2,7 @@
 from pathlib import Path
 import sys
 
+import astropy.constants as ct
 import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
@@ -213,10 +214,13 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
     # Fit power law
     print('Initial vsys:', vsys)
     fit_x, fit_y = edges
-    amplitude = np.max(fit_y) - vsys.to(fit_y.unit)
+    #amplitude = np.max(fit_y) - vsys.to(fit_y.unit)
     x_0 = 100 / distance.to(u.pc).value * u.arcsec
     x_0 = x_0.to(fit_x.unit)
+    ind = fit_x > 0
+    amplitude = fit_y[ind][np.nanargmin(fit_x[ind] - x_0)]
     print('100 au to arcec: ', x_0)
+    print('Initial amplitude: ', -amplitude.value)
     # Upper
     fitter = fitting.SLSQPLSQFitter()
     model = PiecewisePowerLaw(amplitude=-amplitude.value,
@@ -224,6 +228,8 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
                               alpha=0.5,
                               cons=vsys.to(fit_y.unit).value,
                               x_mid=0.)
+    model.x_mid.min = np.nanmax(fit_x[fit_x < 0])
+    model.x_mid.max = np.nanmin(fit_x[fit_x > 0])
     model.x_0.fixed = True
     unrestricted = fitter(model, fit_x.value, fit_y.value)
     model.alpha.fixed = True
@@ -231,6 +237,12 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
     model.cons = unrestricted.cons
     model.x_mid = unrestricted.x_mid
     keplerian = fitter(model, fit_x.value, fit_y.value)
+
+    # Mass
+    vel = np.abs(keplerian.amplitude) * fit_y.unit
+    mass = vel**2 * 100*u.au / ct.G
+    mass = mass.to(u.M_sun)
+    print('Keplerian mass: ', mass)
 
     # Config section and write results
     unrestricted_txt = params_to_txt(unrestricted)
@@ -242,23 +254,24 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
              'color = #46eff2',
              'linestyle = none',
              'plot_keys = OFFSET, VRAD']
-    sect2 = ['[unrestricted_fit]',
+    sect2 = ['[keplerian_fit]',
+             'function = piecewise_powerlaw',
+             f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
+             f'yunit = {yunit_str}',
+             'sampling = 500',
+             'linestyle = --',
+             'color = #eb5252',
+             f'model_mass = {mass}']
+    sect3 = ['[unrestricted_fit]',
              'function = piecewise_powerlaw',
              f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
              f'yunit = {yunit_str}',
              'sampling = 500',
              'linestyle = -',
              'color = #adacac']
-    sect3 = ['[keplerian_fit]',
-             'function = piecewise_powerlaw',
-             f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
-             f'yunit = {yunit_str}',
-             'sampling = 500',
-             'linestyle = --',
-             'color = r']
     text = ('\n'.join(sect1) + '\n'*2 +
-            '\n'.join(sect2) + '\n' + unrestricted_txt + '\n'*2 +
-            '\n'.join(sect3) + '\n' + keplerian_txt)
+            '\n'.join(sect2) + '\n' + keplerian_txt + '\n'*2 +
+            '\n'.join(sect3) + '\n' + unrestricted_txt)
     config = fitsfile.with_suffix('.plot.cfg')
     config.write_text(text)
 
@@ -310,6 +323,8 @@ if __name__ == '__main__':
         fitsfile = config.getpath('pvmap')
         rms = config.getquantity('pvnoise').to(u.Jy/u.beam).value
         distance = config.getquantity('distance')
-        edges, vsys = get_edge(fitsfile, rms)
-        fit_edge(fitsfile, edges, vsys, distance, rms)
+        quadrant = config.getint('pvquadrant', fallback=1)
+        nsigma = config.getfloat('pvnsigma', fallback=3.)
+        edges, vsys = get_edge(fitsfile, rms, nsigma=nsigma, quadrant=quadrant)
+        fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=nsigma)
         print('=' * 80)
