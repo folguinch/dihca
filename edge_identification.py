@@ -1,5 +1,4 @@
-"""Fit PV maps using SLAM."""
-from configparser import ConfigParser
+"""Fit PV maps using in-edge detection."""
 from pathlib import Path
 import sys
 
@@ -10,17 +9,13 @@ from astropy.io import fits
 from astropy.modeling import models, fitting, Parameter, Fittable1DModel
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.wcs import WCS
+from configparseradv.configparser import ConfigParserAdv as ConfigParser
 from line_little_helper.molecule import Molecule
 from toolkit.astro_tools.masking import mask_structures
 from toolkit.astro_tools.images import get_coord_axes
 from toolkit.array_utils import save_struct_array
 
-from pipeline_feria import SOURCES, SECTIONS
-from source_pipeline_extracted import SAVED_MOLS
-
-MOLECULE = 'CH3OH'
-TRANSITION = '18(3,15)-17(4,14)A,vt=0'
-RESULTS = Path('/mnt/metis/dihca/results')
+from common_paths import RESULTS, CONFIGSS
 
 class PiecewisePowerLaw(Fittable1DModel):
     amplitude = Parameter()
@@ -192,6 +187,21 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1):
 
     return (edges_x, edges_y), vsys.to(u.km/u.s)
 
+def params_to_txt(model):
+    names = ['amplitude', 'x_0', 'alpha', 'cons', 'x_mid']
+    params = [f'{model.amplitude.value}',
+              f'{model.x_0.value}',
+              f'{model.alpha.value}',
+              f'{model.cons.value}',
+              f'{model.x_mid.value}']
+    coefs = 'coeficients ='
+    lines = []
+    for name, param in zip(names, params):
+        coefs += f' ${{model_{name}}}'
+        lines.append(f'model_{name} = param')
+    lines.append(coefs)
+    
+    return '\n'.join(lines)
 
 def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
     # Open data
@@ -222,19 +232,28 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
     model.x_mid = unrestricted.x_mid
     keplerian = fitter(model, fit_x.value, fit_y.value)
 
-    # Plot section
-    params = [f'{unrestricted.amplitude.value}',
-              f'{unrestricted.x_0.value}',
-              f'{unrestricted.alpha.value}',
-              f'{unrestricted.cons.value}',
-              f'{unrestricted.x_mid.value}']
-    params_txt = ' '.join(params)
-    text = ['[edge_fit]',
-            'function = piecewise_powerlaw',
-            f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
-            f'coeficients = {params_txt}',
-            f'yunit = {fit_x.unit}']
-    print('\n'.join(text))
+    # Config section and write results
+    unrestricted_txt = params_to_txt(unrestricted)
+    keplerian_txt = params_to_txt(keplerian)
+    sect1 = ['[pvedge]',
+             f"structured_array = {fitsfile.with_suffix('.edge.dat')}"]
+    sect2 = ['[unrestricted_fit]',
+             'function = piecewise_powerlaw',
+             f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
+             f'yunit = {fit_x.unit}',
+             'linestyle = -',
+             'color = k']
+    sect3 = ['[keplerian_fit]',
+             'function = piecewise_powerlaw',
+             f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
+             f'yunit = {fit_x.unit}',
+             'linestyle = --',
+             'color = b']
+    text = ('\n'.join(sect1) + '\n' +
+            '\n'.join(sect2) + '\n' + unrestricted_txt + '\n' +
+            '\n'.join(sect3) + '\n' + keplerian_txt)
+    config = fitsfile.with_suffix('.plot.cfg')
+    config.write_text(text)
 
     # Quick look at fit
     newx = np.linspace(0., xaxis[-1].value, 500)
@@ -274,20 +293,14 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
     fig.savefig(fitsfile.with_suffix('.profile.png'))
 
 if __name__ == '__main__':
-    # Set config sections
-    section_src, section_pv = SECTIONS[MOLECULE]
+    # Summary information
+    source_info = ConfigParser()
+    source_info.read(CONFIGS / 'extracted/summary.cfg')
 
-    # Load molecule information
-    molecule = Molecule.from_json(SAVED_MOLS[MOLECULE])
-    restfreq = molecule.transition_info(TRANSITION).restfreq
-    distance = 3.25 * u.kpc
-    rms = 1.5e-3
-
-    for src, hmcs in SOURCES.items():
-        for hmc in hmcs:
-            fitsfile = RESULTS / f'{src}/c5c8/per_hot_core/{hmc}_pvmaps'
-            fitsfile = fitsfile / 'G335.579-0.272_hmc2_rotation.CH3OH_spw0.ra247.74430_dec-48.73089.PA202.fits'
-            outdir = RESULTS / f'{src}/c5c8/per_hot_core/{hmc}_pvmaps'
-            outdir.mkdir(exist_ok=True)
-            edges, vsys = get_edge(fitsfile, 1.5e-3)
-            fit_edge(fitsfile, edges, vsys, distance, rms)
+    for section in source_info:
+        config = source_info[section]
+        fitsfile = config.getpath('pvmap')
+        rms = config.getquantity('rms').to(u.Jy/u.beam).value
+        distance = config.getquantity('distance')
+        edges, vsys = get_edge(fitsfile, rms)
+        fit_edge(fitsfile, edges, vsys, distance, rms)
