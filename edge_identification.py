@@ -15,7 +15,7 @@ from toolkit.astro_tools.masking import mask_structures
 from toolkit.astro_tools.images import get_coord_axes
 from toolkit.array_utils import save_struct_array
 
-from common_paths import RESULTS, CONFIGSS
+from common_paths import RESULTS, CONFIGS
 
 class PiecewisePowerLaw(Fittable1DModel):
     amplitude = Parameter()
@@ -198,7 +198,7 @@ def params_to_txt(model):
     lines = []
     for name, param in zip(names, params):
         coefs += f' ${{model_{name}}}'
-        lines.append(f'model_{name} = param')
+        lines.append(f'model_{name} = {param}')
     lines.append(coefs)
     
     return '\n'.join(lines)
@@ -235,22 +235,29 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, nsigma=3):
     # Config section and write results
     unrestricted_txt = params_to_txt(unrestricted)
     keplerian_txt = params_to_txt(keplerian)
+    yunit_str = f'{fit_y.unit}'.replace(' ', '')
     sect1 = ['[pvedge]',
-             f"structured_array = {fitsfile.with_suffix('.edge.dat')}"]
+             f"structured_array = {fitsfile.with_suffix('.edge.dat')}",
+             'marker = o',
+             'color = #46eff2',
+             'linestyle = none',
+             'plot_keys = OFFSET, VRAD']
     sect2 = ['[unrestricted_fit]',
              'function = piecewise_powerlaw',
              f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
-             f'yunit = {fit_x.unit}',
+             f'yunit = {yunit_str}',
+             'sampling = 500',
              'linestyle = -',
-             'color = k']
+             'color = #adacac']
     sect3 = ['[keplerian_fit]',
              'function = piecewise_powerlaw',
              f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
-             f'yunit = {fit_x.unit}',
+             f'yunit = {yunit_str}',
+             'sampling = 500',
              'linestyle = --',
-             'color = b']
-    text = ('\n'.join(sect1) + '\n' +
-            '\n'.join(sect2) + '\n' + unrestricted_txt + '\n' +
+             'color = r']
+    text = ('\n'.join(sect1) + '\n'*2 +
+            '\n'.join(sect2) + '\n' + unrestricted_txt + '\n'*2 +
             '\n'.join(sect3) + '\n' + keplerian_txt)
     config = fitsfile.with_suffix('.plot.cfg')
     config.write_text(text)
@@ -297,10 +304,12 @@ if __name__ == '__main__':
     source_info = ConfigParser()
     source_info.read(CONFIGS / 'extracted/summary.cfg')
 
-    for section in source_info:
+    for section in source_info.sections():
+        print('Working on section: ', section)
         config = source_info[section]
         fitsfile = config.getpath('pvmap')
-        rms = config.getquantity('rms').to(u.Jy/u.beam).value
+        rms = config.getquantity('pvnoise').to(u.Jy/u.beam).value
         distance = config.getquantity('distance')
         edges, vsys = get_edge(fitsfile, rms)
         fit_edge(fitsfile, edges, vsys, distance, rms)
+        print('=' * 80)
