@@ -2,7 +2,7 @@
 
 from tile_plotter.plotter import plotter
 
-from common_paths import configs, figures
+from common_paths import CONFIGS, FIGURES
 
 SKIP = [1, 2, 3, 5]
 PLOT_TYPE = 'papers'
@@ -23,7 +23,7 @@ def by_source(sources, config_dir, skip, flags, filters=None):
         for key, val in STEPS.items():
             if key in skip:
                 continue
-            plot_dir = figures / source / PLOT_TYPE
+            plot_dir = FIGURES / source / PLOT_TYPE
             plot_dir.mkdir(parents=True, exist_ok=True)
             for config in config_dir.glob(f'{source}_{val}_*.cfg'):
                 if filters is not None:
@@ -47,7 +47,7 @@ def by_group(config_dir, skip, flags):
         if key in skip:
             continue
         basename = f'group_{group}.*.cfg'
-        plot_dir = figures / f'group_{group}' / PLOT_TYPE
+        plot_dir = FIGURES / f'group_{group}' / PLOT_TYPE
         plot_dir.mkdir(parents=True, exist_ok=True)
         for config in config_dir.glob(basename):
             print(f'Plotting {config}')
@@ -57,7 +57,7 @@ def by_group(config_dir, skip, flags):
 
 if __name__ == '__main__':
     skip = SKIP
-    config_dir = configs / 'plots' / PLOT_TYPE
+    config_dir = CONFIGS / 'plots' / PLOT_TYPE
 
     # Read sources from command line
     sources = ['G14.22-0.50_S', 'G24.60+0.08', 'G29.96-0.02',
