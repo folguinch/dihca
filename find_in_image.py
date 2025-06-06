@@ -70,9 +70,10 @@ sources = {
     #    SkyCoord('18h58m06.16874s', '+01d37m08.1602s', frame='icrs'),
     #    SkyCoord('18h58m06.27972s', '+01d37m07.2029s', frame='icrs')
     #],
-    #'G35.20-0.74_N': [
-    #    SkyCoord('18h58m12.95261s', '+01d40m37.3652s', frame='icrs')
-    #],
+    'G35.20-0.74_N': [
+        SkyCoord('18h58m12.95261s', '+01d40m37.3652s', frame='icrs'),
+        SkyCoord('18h58m13.025s', '+01d40m35.92s', frame='icrs')
+    ],
     #'G351.77-0.54': [
     #    SkyCoord('17h26m42.531s', '-36d09m17.376s', frame='icrs')
     #],
@@ -93,18 +94,25 @@ sources = {
     #    SkyCoord('18h21m09.04928s', '-14d31m47.7925s', frame='icrs'),
     #    SkyCoord('18h21m09.01686s', '-14d31m47.9397s', frame='icrs')
     #],
-    'IRDC_182231243': [
-        SkyCoord('18h25m08.55193s', '-12d45m23.7189s', frame='icrs')
-    ],
+    #'IRDC_182231243': [
+    #    SkyCoord('18h25m08.55193s', '-12d45m23.7189s', frame='icrs')
+    #],
     #'NGC6334I': [
-    #    SkyCoord('17h20m53.416s', '-35d46m58.397s', frame='icrs'),
-    #    SkyCoord('17h20m53.413s', '-35d46m57.881s', frame='icrs')
+    #    SkyCoord('17h20m53.413s', '-35d46m57.881s', frame='icrs'), # alma1
+    #    SkyCoord('17h20m53.416s', '-35d46m58.397s', frame='icrs'), # alma2
+    #    SkyCoord('17h20m53.101s', '-35d47m03.322s', frame='icrs')  # alma3
+    #    SkyCoord('17h20m53.187s', '-35d46m59.328s', frame='icrs'), # alma4
     #],
     #'NGC_6334_I_N': [
+    #    # alma1
     #    SkyCoord('17h20m55.19122s', '-35d45m03.9506457765s', frame='icrs'),
+    #    # alma 2
     #    SkyCoord('17h20m54.59259s', '-35d45m17.3664586427s', frame='icrs'),
-    #    SkyCoord('17h20m54.61936s', '-35d45m08.6730547234s', frame='icrs'),
+    #    # alma 4
     #    SkyCoord('17h20m54.87219s', '-35d45m06.4298713643s', frame='icrs'),
+    #    # alma 6
+    #    SkyCoord('17h20m54.61936s', '-35d45m08.6730547234s', frame='icrs'),
+    #    # alma 11
     #    SkyCoord('17h20m54.83885s', '-35d45m06.0538803313s', frame='icrs')
     #],
     #'W33A': [
@@ -118,12 +126,14 @@ sources = {
     #],
 }
 
+molec = 'CH3OH'
+#molec = 'CH3CN'
+
 for source, coords in sources.items():
     print('=' * 80)
     print(f'Source: {source}')
-    #mask_dir = Path(f'/mnt/metis/dihca/results/{source}/c5c8/per_hot_core/')
-    mask_dir = Path(f'/Volumes/Pegasus32 R8/dihca/results/{source}/c5c8/per_hot_core/')
-    for img in mask_dir.glob('*CH3CN*.mask.fits'):
+    mask_dir = Path(f'../results/{source}/c5c8/per_hot_core/')
+    for img in mask_dir.glob(f'*{molec}*.mask.fits'):
         mask = fits.open(img)[0]
         val = mask.data.astype(bool)
         wcs = WCS(mask)

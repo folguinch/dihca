@@ -1,4 +1,5 @@
 """Fit PV maps using in-edge detection."""
+from dataclasses import dataclass
 from pathlib import Path
 import sys
 
@@ -7,69 +8,74 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
-from astropy.modeling import models, fitting, Parameter, Fittable1DModel
+from astropy.modeling import models, fitting
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.wcs import WCS
 from configparseradv.configparser import ConfigParserAdv as ConfigParser
 from line_little_helper.molecule import Molecule
+from scipy.odr import RealData, ODR, Model 
 from toolkit.astro_tools.masking import mask_structures
 from toolkit.astro_tools.images import get_coord_axes
 from toolkit.array_utils import save_struct_array
 
 from common_paths import RESULTS, CONFIGS
+from edge_identification import PiecewisePowerLaw
 
-class PiecewisePowerLaw(Fittable1DModel):
-    amplitude = Parameter()
-    x_0 = Parameter()
-    alpha = Parameter()
-    cons = Parameter()
-    x_mid = Parameter()
+def model(params, x):
+    """Params are: amplitude, x_0, alpha, vsys, off0."""
+    amplitude, x_0, alpha, vsys, off0 = params
+    mask = x < off0
+    vals = np.zeros(len(x))
+    vals[mask] = amplitude * (np.abs(x[mask] - off0) / x_0)**-alpha
+    vals[~mask] = -amplitude * ((x[~mask] - off0) / x_0)**-alpha
 
-    @staticmethod
-    def evaluate(x, amplitude, x_0, alpha, cons, x_mid):
-        mask = x < x_mid
-        vals = np.zeros(len(x))
-        vals[mask] = models.PowerLaw1D.evaluate(np.abs(x[mask] - x_mid),
-                                                amplitude,
-                                                x_0,
-                                                alpha)
-        vals[~mask] = models.PowerLaw1D.evaluate(x[~mask] - x_mid,
-                                                 -amplitude,
-                                                 x_0,
-                                                 alpha)
-        return vals + cons
+    return vals + vsys
 
-    @staticmethod
-    def fit_deriv(x, amplitude, x_0, alpha, cons, x_mid):
-        mask = x < x_mid
+@dataclass
+class ModelData:
+    amplitude: float
+    x_0: float
+    alpha: float
+    vsys: float
+    off0: float
+    sd_amplitude: float
+    sd_x_0: float
+    sd_alpha: float
+    sd_vsys: float
+    sd_off0: float
+    info: int
+    names: tuple = ('amplitude', 'x_0', 'alpha', 'vsys', 'offset0',
+                     'sd_amplitude', 'sd_x_0', 'sd_alpha', 'sd_vsys',
+                     'sd_offset0', 'info')
 
-        d_amp_neg, d_x0_neg, d_alpha_neg  = models.PowerLaw1D.fit_deriv(
-            np.abs(x[mask] - x_mid),
-            amplitude,
-            x_0,
-            alpha)
-        d_amp_pos, d_x0_pos, d_alpha_pos  = models.PowerLaw1D.fit_deriv(
-            x[~mask] - x_mid,
-            -amplitude,
-            x_0,
-            alpha)
-        d_amp = np.zeros(x.size)
-        d_amp[mask] = d_amp_neg
-        d_amp[~mask] = d_amp_pos
-        d_x0 = np.zeros(x.size)
-        d_x0[mask] = d_x0_neg
-        d_x0[~mask] = d_x0_pos
-        d_alpha = np.zeros(x.size)
-        d_alpha[mask] = d_alpha_neg
-        d_alpha[~mask] = d_alpha_pos
-        d_xmid = np.zeros(x.size)
-        d_xmid[mask] = amplitude * x_0**alpha * alpha * \
-                np.abs(x[mask] - x_mid)**(-alpha - 1)
-        d_xmid[~mask] = -amplitude * x_0**alpha * alpha * \
-                (x[~mask] - x_mid)**(-alpha - 1)
-        d_cons = np.ones(x.size)
+    @property
+    def params(self):
+        return [self.amplitude, self.x_0, self.alpha, self.vsys, self.off0]
 
-        return [d_amp, d_xmid, d_x0, d_alpha, d_cons]
+    def __call__(self, x):
+        return model(self.params, x)
+
+    def to_txt(self):
+        params = [f'{self.amplitude}',
+                  f'{self.x_0}',
+                  f'{self.alpha}',
+                  f'{self.vsys}',
+                  f'{self.off0}',
+                  f'{self.sd_amplitude}',
+                  f'{self.sd_x_0}',
+                  f'{self.sd_alpha}',
+                  f'{self.sd_vsys}',
+                  f'{self.sd_off0}',
+                  f'{self.info}']
+        coefs = 'coeficients ='
+        lines = []
+        for name, param in zip(self.names, params):
+            if 'sd' not in name and name != 'info':
+                coefs += f' ${{model_{name}}}'
+            lines.append(f'model_{name} = {param}')
+        lines.append(coefs)
+        
+        return '\n'.join(lines)
 
 def update_plot_config(plot_config, config):
     cfg = ConfigParser()
@@ -205,25 +211,9 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None, ylim=None)
     # Convert to quantitites
     vsys = vsys * unit2
 
-    return (edges_x, edges_y), vsys.to(u.km/u.s)
+    return (edges_x, edges_y), (errors, yerr), vsys.to(u.km/u.s)
 
-def params_to_txt(model):
-    names = ['amplitude', 'x_0', 'alpha', 'cons', 'x_mid']
-    params = [f'{model.amplitude.value}',
-              f'{model.x_0.value}',
-              f'{model.alpha.value}',
-              f'{model.cons.value}',
-              f'{model.x_mid.value}']
-    coefs = 'coeficients ='
-    lines = []
-    for name, param in zip(names, params):
-        coefs += f' ${{model_{name}}}'
-        lines.append(f'model_{name} = {param}')
-    lines.append(coefs)
-    
-    return '\n'.join(lines)
-
-def fit_edge(fitsfile, edges, vsys, distance, rms, name, nsigma=3,
+def fit_edge(fitsfile, edges, errors, vsys, distance, rms, name, nsigma=3,
              plot_config=None):
     # Open data
     image = fits.open(fitsfile)[0]
@@ -234,6 +224,8 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, name, nsigma=3,
     # Fit power law
     print('Initial vsys:', vsys)
     fit_x, fit_y = edges
+    errx, erry = errors
+    data = RealData(fit_x.value, fit_y.value, sx=errx.value, sy=erry.value)
     #amplitude = np.max(fit_y) - vsys.to(fit_y.unit)
     x_0 = 100 / distance.to(u.pc).value * u.arcsec
     x_0 = x_0.to(fit_x.unit)
@@ -241,62 +233,53 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, name, nsigma=3,
     amplitude = fit_y[ind][np.nanargmin(fit_x[ind] - x_0)]
     print('100 au to arcsec: ', x_0)
     print('Initial amplitude: ', amplitude.value)
-    # Upper
+    beta0kep = [amplitude.value, x_0.value, 0.5, vsys.to(fit_y.unit).value, 0.]
+    ifixbkep1 = [1, 0, 0, 1, 1]
+    ifixbunre = [1, 0, 1, 1, 1]
+    ifixbkep2 = [1, 0, 0, 0, 0]
+    pwlaw = Model(model)
     fitter = fitting.SLSQPLSQFitter()
-    model = PiecewisePowerLaw(amplitude=amplitude.value,
-                              x_0=x_0.value,
-                              alpha=0.5,
-                              cons=vsys.to(fit_y.unit).value,
-                              x_mid=0.)
-    model.x_0.fixed = True
-    model.x_mid.min = np.nanmax(fit_x[fit_x < 0])
-    model.x_mid.max = np.nanmin(fit_x[fit_x > 0])
-    print('x_mid range: ', model.x_mid.min, model.x_mid.max)
-    #if -amplitude.value < 0:
-    #    model.amplitude.min = 0
-    #else:
-    #    model.amplitude.max = 0
-    #model.alpha.fixed = False
-    #model.alpha.min = 0
-    #model.alpha.max = 3
-    #unrestricted = fitter(model, fit_x.value, fit_y.value)
-    #print('Final amplitude: ', unrestricted.amplitude.value)
-    #model.amplitude = unrestricted.amplitude
-    #model.cons = unrestricted.cons
-    #model.x_mid = unrestricted.x_mid
-    model.alpha.fixed = True
-    #model.cons.fixed = True
-    #model.x_mid.fixed = True
-    print('Keplerian first pass')
-    keplerian = fitter(model, fit_x.value, fit_y.value)
+    apymodel = PiecewisePowerLaw(amplitude=amplitude.value,
+                                 x_0=x_0.value,
+                                 alpha=0.5,
+                                 cons=vsys.to(fit_y.unit).value,
+                                 x_mid=0.)
+    apymodel.x_0.fixed = True
+    apymodel.alpha.fixed = True
+    apymodel.x_mid.min = np.nanmax(fit_x[fit_x < 0])
+    apymodel.x_mid.max = np.nanmin(fit_x[fit_x > 0])
+    print('x_mid range: ', apymodel.x_mid.min, apymodel.x_mid.max)
+    keplerian = fitter(apymodel, fit_x.value, fit_y.value)
     print('Keplerian amplitude: ', keplerian.amplitude.value)
-    model.alpha.fixed = False
-    model.alpha.min = 0
-    model.alpha.max = 3
-    model.amplitude = keplerian.amplitude
-    model.cons = keplerian.cons
-    model.x_mid = keplerian.x_mid
-    unrestricted = fitter(model, fit_x.value, fit_y.value)
-    print('Unrestricted amplitude: ', unrestricted.amplitude.value)
-    model.amplitude = unrestricted.amplitude
-    model.cons = unrestricted.cons
-    model.x_mid = unrestricted.x_mid
-    model.alpha.fixed = True
-    model.cons.fixed = True
-    model.x_mid.fixed = True
-    print('Keplerian second pass')
-    keplerian = fitter(model, fit_x.value, fit_y.value)
-    print('Keplerian amplitude: ', keplerian.amplitude.value)
+    #keplerian_odr = ODR(data, pwlaw, beta0=beta0kep, ifixb=ifixbkep1)
+    #output1 = keplerian_odr.run()
+    #print('First Keplerian run: ')
+    #output1.pprint()
+    beta0 = [keplerian.amplitude.value, x_0.value, 0.5, keplerian.cons.value,
+             keplerian.x_mid.value]
+    unrestricted_odr = ODR(data, pwlaw, beta0=beta0, ifixb=ifixbunre)
+    output2 = unrestricted_odr.run()
+    unrestricted = ModelData(*output2.beta, *output2.sd_beta, output2.info)
+    print('Unrestricted run: ')
+    output2.pprint()
+    beta0 = output2.beta
+    beta0[2] = 0.5
+    keplerian_odr = ODR(data, pwlaw, beta0=beta0, ifixb=ifixbkep2)
+    output3 = keplerian_odr.run()
+    keplerian = ModelData(*output3.beta, *output3.sd_beta, output3.info)
+    print('Last Keplerian:')
+    output3.pprint()
 
     # Mass
     vel = np.abs(keplerian.amplitude) * fit_y.unit
     mass = vel**2 * 100*u.au / ct.G
     mass = mass.to(u.M_sun)
-    print('Keplerian mass: ', mass)
+    sd_mass = np.abs(2 * mass * keplerian.sd_amplitude / keplerian.amplitude)
+    print('Keplerian mass: ', mass, '+/-', sd_mass)
 
     # Config section and write results
-    unrestricted_txt = params_to_txt(unrestricted)
-    keplerian_txt = params_to_txt(keplerian)
+    unrestricted_txt = unrestricted.to_txt()
+    keplerian_txt = keplerian.to_txt()
     yunit_str = f'{fit_y.unit}'.replace(' ', '')
     sect1 = [f'[{name}_pvedge]',
              f"structured_array = {fitsfile.with_suffix('.edge.dat')}",
@@ -311,7 +294,8 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, name, nsigma=3,
              'sampling = 500',
              'linestyle = --',
              'color = #eb5252',
-             f'model_mass = {mass}']
+             f'model_mass = {mass}',
+             f'model_sd_mass = {sd_mass}']
     sect3 = [f'[{name}_unrestricted_fit]',
              'function = piecewise_powerlaw',
              f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
@@ -335,20 +319,20 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, name, nsigma=3,
     ax.imshow(image.data, origin='lower', extent=extent)
     ax.contour(image.data, levels=[rms * nsigma], extent=extent)
     ax.plot(fit_x, fit_y, 'ro')
-    ax.plot(newx + unrestricted.x_mid,
-            unrestricted(newx + unrestricted.x_mid),
-            -newx + unrestricted.x_mid,
-            unrestricted(-newx + unrestricted.x_mid),
+    ax.plot(newx + unrestricted.off0,
+            unrestricted(newx + unrestricted.off0),
+            -newx + unrestricted.off0,
+            unrestricted(-newx + unrestricted.off0),
             linestyle='-', color='k')
     #ax.plot(-newx + unrestricted.x_mid,
     #        unrestricted(-newx + unrestricted.x_mid), 'k-')
-    ax.plot(newx + keplerian.x_mid,
-            keplerian(newx + keplerian.x_mid), 'b--')
-    ax.plot(-newx + keplerian.x_mid,
-            keplerian(-newx + keplerian.x_mid), 'b--')
-    ax.axhline(unrestricted.cons.value, color='g', ls=':')
-    ax.axhline(unrestricted.cons.value, color='g', ls='--')
-    ax.axvline(unrestricted.x_mid.value, color='g', ls='--')
+    ax.plot(newx + keplerian.off0,
+            keplerian(newx + keplerian.off0), 'b--')
+    ax.plot(-newx + keplerian.off0,
+            keplerian(-newx + keplerian.off0), 'b--')
+    ax.axhline(unrestricted.vsys, color='g', ls=':')
+    ax.axhline(unrestricted.vsys, color='g', ls='--')
+    ax.axvline(unrestricted.off0, color='g', ls='--')
     ax.set_xlim(xaxis[0].value, xaxis[-1].value)
     ax.set_ylim(yaxis[0].value, yaxis[-1].value)
     ax.set_xlabel('Offset (arcsec)')
@@ -357,8 +341,8 @@ def fit_edge(fitsfile, edges, vsys, distance, rms, name, nsigma=3,
     fig.savefig(fitsfile.with_suffix('.edges.png'))
 
     fig, ax = plt.subplots()
-    ax.plot(np.log10(np.abs(fit_x.value - unrestricted.x_mid.value)),
-            np.log10(np.abs(fit_y.value - unrestricted.cons.value)),
+    ax.plot(np.log10(np.abs(fit_x.value - unrestricted.off0)),
+            np.log10(np.abs(fit_y.value - unrestricted.vsys)),
             'kx')
     ax.set_xlabel('log(Offset / arcsec)')
     ax.set_ylabel('log(|$v_{rad} - v_{sys}$| / km/s)')
@@ -370,8 +354,8 @@ if __name__ == '__main__':
     source_info.read(CONFIGS / 'extracted/summary.cfg')
 
     for section in source_info.sections():
-        if section not in ['G35.20-0.74_N_alma2']:
-            continue
+        #if section not in ['NGC_6334_I_N_alma4']:
+        #    continue
         print('Working on section: ', section)
         config = source_info[section]
         name = config['name'] + '_alma' + config['alma']
@@ -387,8 +371,10 @@ if __name__ == '__main__':
             plot_config = CONFIGS / f'plots/papers/group_pv_maps.{plot_number}.cfg'
         else:
             plot_config = None
-        edges, vsys = get_edge(fitsfile, rms, nsigma=nsigma, quadrant=quadrant,
-                               xlim=xlim, ylim=ylim)
-        fit_edge(fitsfile, edges, vsys, distance, rms, name, nsigma=nsigma,
+        edges, errors, vsys = get_edge(fitsfile, rms, nsigma=nsigma,
+                                       quadrant=quadrant,
+                                       xlim=xlim, ylim=ylim)
+        fit_edge(fitsfile, edges, errors, vsys, distance, rms, name, nsigma=nsigma,
                  plot_config=plot_config)
         print('=' * 80)
+
