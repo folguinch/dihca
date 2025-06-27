@@ -15,6 +15,8 @@ sources = {
                            (-48.5 * u.km/u.s, -39.7 * u.km/u.s)),
     'G343.12-0.06_alma1': ((-0.16 * u.arcsec, 0.23 * u.arcsec),
                            (-40.1 * u.km/u.s, -31.3 * u.km/u.s)),
+    'G35.13-0.74_alma6': ((-0.005 * u.arcsec, 0.15 * u.arcsec),
+                          (39.5 * u.km/u.s, 30.2 * u.km/u.s)),
     'G35.20-0.74_N_alma2': ((-0.32 * u.arcsec, 0.030 * u.arcsec),
                             (26.0 * u.km/u.s, 32.9 * u.km/u.s)), 
     'IRAS_165623959_alma2': ((-0.053 * u.arcsec, 0.079 * u.arcsec),
