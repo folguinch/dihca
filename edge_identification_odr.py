@@ -354,7 +354,7 @@ if __name__ == '__main__':
     source_info.read(CONFIGS / 'extracted/summary.cfg')
 
     for section in source_info.sections():
-        #if section not in ['NGC_6334_I_N_alma4']:
+        #if section not in ['NGC_6334_I_N_alma1']:
         #    continue
         print('Working on section: ', section)
         config = source_info[section]

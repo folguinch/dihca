@@ -16,7 +16,7 @@ from line_little_helper.symmetric_moments import symmetric_moments
 from line_little_helper.utils import normalize_qns
 from tile_plotter.plotter import plotter
 
-from common_paths import results, configs, figures
+from common_paths import RESULTS, CONFIGS, FIGURES
 
 # Recommended line lists
 LINE_LISTS = {
@@ -202,9 +202,9 @@ def moments(source,
             #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
             qns_mol=LINE_TRANSITIONS,
             # For 480 kHz
-            half_width=10):
+            #half_width=10):
             # For 900 kHz
-            #half_width=5):
+            half_width=5):
     plot_template = configs / 'templates' / 'moment_maps.cfg'
     for mol in molecules:
         # Find what molecules are in the source
@@ -300,6 +300,7 @@ def line_cube(source,
                          '--qns', qns,
                          '--nsigma', '5',
                          '--win_halfwidth', f'{half_width}',
+                         '--min_area', '25'
                         ]
                 if mol in SAVED_MOLS:
                     flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
@@ -516,18 +517,20 @@ if __name__ == '__main__':
                       'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
     #sources = ['G14.22-0.50_S']
     #sources = sources_490kHz
-    sources = ['IRDC_182231243']
+    #sources = ['NGC_6334_I_N', 'W33A', 'G10.62-0.38', 'G35.13-0.74']
+    #sources = ['IRAS_181622048']
+    sources = ['G5.89-0.37']
 
     # Iterate over source config files
-    iterover = (configs / f'{source}.cfg' for source in sources)
+    iterover = (CONFIGS / f'{source}.cfg' for source in sources)
     for config in iterover:
         # Open source
         src = Source(config_file=config)
-        outdir = results / src.name / array
+        outdir = RESULTS / src.name / array
 
         # Run steps
         for n, func in steps.items():
             if n in skip:
                 continue
             print(f'Step {n}')
-            func(src, outdir, configs, figures, array)
+            func(src, outdir, CONFIGS, FIGURES, array)

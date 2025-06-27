@@ -23,13 +23,14 @@ from common_paths import RESULTS, CONFIGS, FIGURES
 
 # Molecules to analyze
 #MOLECULES = ('CH3OH',)
-MOLECULES = ('CH3OH', 'CH3CN',)
-#MOLECULES = ('CH3CN',)
+#MOLECULES = ('CH3OH', 'CH3CN',)
+MOLECULES = ('CH3CN',)
 
 # Source lists:
 SOURCES_970 = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
                'G34.43+0.24MM2', 'G35.13-0.74', 'G5.89-0.37',
                'IRAS_181511208', 'IRAS_18182-1433', 'IRDC_182231243',
+               'IRAS_181622048',
                'W33A', 'IRAS_180891732')
 SOURCES_490 = ('G14.22-0.50_S', 'G24.60+0.08', 'G29.96-0.02',
                'G333.12-0.56', 'G333.23-0.06', 'G333.46-0.16',
@@ -45,7 +46,9 @@ WITH_LINES_PV = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61', 'G29.96-0.02',
                  'IRAS_180891732', 'IRAS_18182-1433', 'NGC_6334_I_N', 'W33A')
 #SOURCES = SOURCES_970 + SOURCES_490
 #SOURCES = WITH_LINES_PV
-SOURCES = ('G24.60+0.08',)
+#SOURCES = ('G10.62-0.38', 'NGC_6334_I_N')# 'G35.13-0.74')
+SOURCES = ('IRAS_181622048',)
+#SOURCES = ('IRAS_181511208',)
 
 # Source-specific half widths
 HWIDTHS = {
@@ -105,23 +108,23 @@ HWIDTHS = {
             },
         },
     'NGC_6334_I_N': {
-        'hmc1': {
+        'alma1': {
             'CH3OH': 15,
             'CH3CN': 15,
             },
-        'hmc2': {
+        'alma2': {
             'CH3OH': 15,
             'CH3CN': 15,
             },
-        'hmc3': {
+        'alma6': {
             'CH3OH': 20,
             'CH3CN': 20,
             },
-        'hmc4': {
+        'alma4': {
             'CH3OH': 15,
             'CH3CN': 15,
             },
-        'hmc5': {
+        'alma11': {
             'CH3OH': 15,
             'CH3CN': 15,
             },
@@ -532,23 +535,21 @@ if __name__ == '__main__':
     #    7: peak_maps,
     #    8: line_cube,
     }
-    skip = [4]
+    #skip = [3, 4]
+    skip = [1,2,3]
+    #skip = [4]
     array = 'c5c8'
 
     # Read sources from command line
     sources = SOURCES
-    #sources = ['G11.92-0.61', 'G14.22-0.50_S', 'G333.12-0.56', 'G333.23-0.06',
-    #           'G333.46-0.16', 'G35.03+0.35_A', 'IRAS_180891732']
-    #sources = ['G11.1-0.12']
-
 
     # Iterate over source config files
-    config_dir = configs / 'extracted'
+    config_dir = CONFIGS / 'extracted'
     for source in sources:
-        for config in config_dir.glob(f'{source}_hmc*.cfg'):
+        for config in config_dir.glob(f'{source}_alma*.cfg'):
             # Open source
             src = Source(config_file=config)
-            outdir = results / src.name / array / 'per_hot_core'
+            outdir = RESULTS / src.name / array / 'per_hot_core'
             hmc = config.stem.split('_')[-1]
 
             # Run steps
