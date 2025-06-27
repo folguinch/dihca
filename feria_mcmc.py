@@ -33,7 +33,7 @@ class Observation:
                  section: str,
                  line: str,
                  restfreq: u.Quantity,
-                 pixsize: str = '0.004',
+                 pixsize: str = '0.01',
                  velres: str = '0.1'):
         parser = ConfigParser(default_section='INFO')
         parser.read(config)
