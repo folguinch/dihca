@@ -1,5 +1,6 @@
 """Fit PV maps using in-edge detection."""
 from dataclasses import dataclass
+from itertools import product
 from pathlib import Path
 import sys
 
@@ -83,16 +84,38 @@ def update_plot_config(plot_config, config):
     with open(plot_config, 'w') as configfile:
         cfg.write(configfile)
 
-def find_edge(slcs, fn, data, beam, delta=2, inverted=False):
+def find_edge(data, fn, beam, delta=2, inverted=False):
+    xslcs = np.ma.notmasked_contiguous(data, axis=1)
+    yslcs = np.ma.notmasked_contiguous(data, axis=0)
+    xyvals = {}
+    for xind, yslc in enumerate(yslcs):
+        if len(yslc) == 0:
+            continue
+        for yind, xslc in enumerate(xslcs):
+            if len(xslc) == 0:
+                continue
+            xval = fn(xslc[0].start, xslc[-1].stop-1) 
+            yval = fn(yslc[0].start, yslc[-1].stop-1)
+            if xind == xval and yind == yval:
+                xyvals[xind] = yind
+                break
+            elif (xind in range(xslc[0].start, xslc[-1].stop) and
+                  yind in range(yslc[0].start, yslc[-1].stop)):
+                if xind in xyvals:
+                    xyvals[xind] = fn(xyvals[xind], yind)
+                else:
+                    xyvals[xind] = yind
+    xyvals = np.array(list(map(list, xyvals.items())))
     xmid = data.shape[1] / 2
-    yaxis = np.arange(data.shape[0], dtype=int)
-    if inverted:
-        yaxis = yaxis[::-1]
+    #yaxis = np.arange(data.shape[0], dtype=int)
+    #if inverted:
+    #    yaxis = yaxis[::-1]
 
     # Find edge values
-    xyvals = np.array([[fn(slci[0].start, slci[-1].stop-1), y]
-                       for y, slci in zip(yaxis, slcs)
-                       if len(slci) != 0])
+    #xyvals = np.array([[fn(slci[0].start, slci[-1].stop-1), y]
+    #                   for y, slci in zip(yaxis, slcs)
+    #                   if len(slci) != 0])
+    print(xyvals)
     ind = np.nanargmax(np.abs(xyvals[:,0] - xmid))
     xyvals = xyvals[:ind+1]
 
@@ -103,7 +126,7 @@ def find_edge(slcs, fn, data, beam, delta=2, inverted=False):
         xran = np.arange(max(x - delta, 0),
                          min(x + delta + 1, data.shape[1]),
                          dtype=int)
-        weight = data[y][xran]
+        weight = data.data[y][xran]
         nanmask = np.isnan(weight)
         weight = weight[~nanmask]
         xran = xran[~nanmask]
@@ -144,9 +167,9 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None, ylim=None)
     else:
         fn_upper = min
         fn_lower = max
-    edges_upper, edges_upper_error = find_edge(slcs, fn_upper, image.data,
+    edges_upper, edges_upper_error = find_edge(image_masked, fn_upper,
                                                beam, delta=delta)
-    edges_lower, edges_lower_error = find_edge(slcs[::-1], fn_lower, image.data,
+    edges_lower, edges_lower_error = find_edge(image_masked, fn_lower,
                                                beam, delta=delta, inverted=True)
     edges_x = np.append(edges_upper[:, 0], edges_lower[:, 0])
     edges_y = np.append(edges_upper[:, 1], edges_lower[:, 1])
@@ -190,7 +213,14 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None, ylim=None)
         edges_y = edges_y[xmask]
         errors = errors[xmask]
     if ylim is not None:
-        ymask = (edges_y > ylim[0]) & (edges_y < ylim[1])
+        if len(ylim) == 2:
+            ymask = (edges_y > ylim[0]) & (edges_y < ylim[1])
+        elif len(ylim) == 4:
+            ymask1 = (edges_y > ylim[0]) & (edges_y < ylim[1])
+            ymask2 = (edges_y > ylim[2]) & (edges_y < ylim[3])
+            ymask = ymask1 | ymask2
+        else:
+            raise ValueError
         edges_x = edges_x[ymask]
         edges_y = edges_y[ymask]
         errors = errors[ymask]
@@ -354,8 +384,8 @@ if __name__ == '__main__':
     source_info.read(CONFIGS / 'extracted/summary.cfg')
 
     for section in source_info.sections():
-        #if section not in ['NGC_6334_I_N_alma1']:
-        #    continue
+        if section not in ['IRAS_181622048_alma1_c-hcooh']:
+            continue
         print('Working on section: ', section)
         config = source_info[section]
         name = config['name'] + '_alma' + config['alma']
