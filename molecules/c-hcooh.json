@@ -1,0 +1,16 @@
+{
+    "name": "c-HCOOH",
+    "transitions": [
+        {
+            "species": "c-HCOOH",
+            "qns": "10(4,6)-9(4,5)",
+            "restfreq": 219.9729675,
+            "restfreq_unit": "GHz",
+            "logaij": -3.45943,
+            "obsfreq": null,
+            "eup": 115.96577,
+            "eup_unit": "K"
+        }
+    ]
+}
+
