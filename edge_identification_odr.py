@@ -1,6 +1,5 @@
 """Fit PV maps using in-edge detection."""
 from dataclasses import dataclass
-from itertools import product
 from pathlib import Path
 import sys
 
@@ -84,38 +83,38 @@ def update_plot_config(plot_config, config):
     with open(plot_config, 'w') as configfile:
         cfg.write(configfile)
 
-def find_edge(data, fn, beam, delta=2, inverted=False):
-    xslcs = np.ma.notmasked_contiguous(data, axis=1)
-    yslcs = np.ma.notmasked_contiguous(data, axis=0)
-    xyvals = {}
-    for xind, yslc in enumerate(yslcs):
-        if len(yslc) == 0:
-            continue
-        for yind, xslc in enumerate(xslcs):
-            if len(xslc) == 0:
-                continue
-            xval = fn(xslc[0].start, xslc[-1].stop-1) 
-            yval = fn(yslc[0].start, yslc[-1].stop-1)
-            if xind == xval and yind == yval:
-                xyvals[xind] = yind
-                break
-            elif (xind in range(xslc[0].start, xslc[-1].stop) and
-                  yind in range(yslc[0].start, yslc[-1].stop)):
-                if xind in xyvals:
-                    xyvals[xind] = fn(xyvals[xind], yind)
-                else:
-                    xyvals[xind] = yind
-    xyvals = np.array(list(map(list, xyvals.items())))
+def find_edge(slcs, fn, data, beam, delta=2, inverted=False):
+    #xslcs = np.ma.notmasked_contiguous(data, axis=1)
+    #yslcs = np.ma.notmasked_contiguous(data, axis=0)
+    #xyvals = {}
+    #for xind, yslc in enumerate(yslcs):
+    #    if len(yslc) == 0:
+    #        continue
+    #    for yind, xslc in enumerate(xslcs):
+    #        if len(xslc) == 0:
+    #            continue
+    #        xval = fn(xslc[0].start, xslc[-1].stop-1) 
+    #        yval = fn(yslc[0].start, yslc[-1].stop-1)
+    #        if xind == xval and yind == yval:
+    #            xyvals[xind] = yind
+    #            break
+    #        elif (xind in range(xslc[0].start, xslc[-1].stop) and
+    #              yind in range(yslc[0].start, yslc[-1].stop)):
+    #            if xind in xyvals:
+    #                xyvals[xind] = fn(xyvals[xind], yind)
+    #            else:
+    #                xyvals[xind] = yind
+    #xyvals = np.array(list(map(list, xyvals.items())))
+    #xmid = data.shape[1] / 2
     xmid = data.shape[1] / 2
-    #yaxis = np.arange(data.shape[0], dtype=int)
-    #if inverted:
-    #    yaxis = yaxis[::-1]
+    yaxis = np.arange(data.shape[0], dtype=int)
+    if inverted:
+        yaxis = yaxis[::-1]
 
     # Find edge values
-    #xyvals = np.array([[fn(slci[0].start, slci[-1].stop-1), y]
-    #                   for y, slci in zip(yaxis, slcs)
-    #                   if len(slci) != 0])
-    print(xyvals)
+    xyvals = np.array([[fn(slci[0].start, slci[-1].stop-1), y]
+                       for y, slci in zip(yaxis, slcs)
+                       if len(slci) != 0])
     ind = np.nanargmax(np.abs(xyvals[:,0] - xmid))
     xyvals = xyvals[:ind+1]
 
@@ -126,7 +125,7 @@ def find_edge(data, fn, beam, delta=2, inverted=False):
         xran = np.arange(max(x - delta, 0),
                          min(x + delta + 1, data.shape[1]),
                          dtype=int)
-        weight = data.data[y][xran]
+        weight = data[y][xran]
         nanmask = np.isnan(weight)
         weight = weight[~nanmask]
         xran = xran[~nanmask]
@@ -137,7 +136,8 @@ def find_edge(data, fn, beam, delta=2, inverted=False):
 
     return np.array(edge_points), np.array(edge_errors)*beam.unit
 
-def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None, ylim=None):
+def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None,
+             ylim=None, ncomponents=1):
     # Open data
     image = fits.open(fitsfile)[0]
     mask = image.data > rms * nsigma
@@ -147,7 +147,14 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None, ylim=None)
     # Get mask of the largest object
     mask, labels, nlabels = mask_structures(mask)
     component_sizes = np.bincount(labels.ravel())
-    max_component = component_sizes == np.nanmax(component_sizes[1:])
+    max_component = None
+    print(np.sort(component_sizes[1:])[::-1])
+    for comp_size in np.sort(component_sizes[1:])[::-1][:ncomponents]:
+        aux = component_sizes == comp_size
+        if max_component is None:
+            max_component = aux
+        else:
+            max_component = max_component | aux
     max_mask = max_component[labels]
     mask[~max_mask] = False
 
@@ -167,9 +174,9 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None, ylim=None)
     else:
         fn_upper = min
         fn_lower = max
-    edges_upper, edges_upper_error = find_edge(image_masked, fn_upper,
+    edges_upper, edges_upper_error = find_edge(slcs, fn_upper, image.data,
                                                beam, delta=delta)
-    edges_lower, edges_lower_error = find_edge(image_masked, fn_lower,
+    edges_lower, edges_lower_error = find_edge(slcs[::-1], fn_lower, image.data,
                                                beam, delta=delta, inverted=True)
     edges_x = np.append(edges_upper[:, 0], edges_lower[:, 0])
     edges_y = np.append(edges_upper[:, 1], edges_lower[:, 1])
@@ -397,13 +404,15 @@ if __name__ == '__main__':
         quadrant = config.getint('pvquadrant', fallback=1)
         nsigma = config.getfloat('pvnsigma', fallback=3.)
         plot_number = config.get('nplot', fallback=None)
+        ncomponents = config.getint('ncomponents', fallback=1)
         if plot_number is not None:
             plot_config = CONFIGS / f'plots/papers/group_pv_maps.{plot_number}.cfg'
         else:
             plot_config = None
         edges, errors, vsys = get_edge(fitsfile, rms, nsigma=nsigma,
                                        quadrant=quadrant,
-                                       xlim=xlim, ylim=ylim)
+                                       xlim=xlim, ylim=ylim,
+                                       ncomponents=ncomponents)
         fit_edge(fitsfile, edges, errors, vsys, distance, rms, name, nsigma=nsigma,
                  plot_config=plot_config)
         print('=' * 80)
