@@ -268,13 +268,14 @@ def line_cube(source,
               #molecules=['CH3CN', '(13)CH3CN', '(13)CH3OH', 'CH3CHO', 'HNCO',
               #           'CH3OCHO', 'SO2', 'HC3N', 'CH3OH', 'NH2CHO'],
               #molecules=['(13)CH3OH', 'CH3OH'],
-              #molecules=['CH3OH'],
-              molecules=['CH3CN'],
+              molecules=['CH3OH'],
+              #molecules=['CH3CN'],
               #molecules=['HC3N'],
               #molecules=['CH3OH', 'CH3CN', '(13)CH3OH', '(13)CH3CN'],
               qns_mol={'CH3OH': ['18(3,15)-17(4,14)A,vt=0'],
                        'CH3CN': ['12(2)-11(2)']},
-              spw='3',
+              spw='0',
+              #spw='3',
               # For 480 kHz
               half_width=10):
     # For 900 kHz
@@ -518,8 +519,8 @@ if __name__ == '__main__':
     #sources = ['G14.22-0.50_S']
     #sources = sources_490kHz
     #sources = ['NGC_6334_I_N', 'W33A', 'G10.62-0.38', 'G35.13-0.74']
-    #sources = ['IRAS_181622048']
-    sources = ['G5.89-0.37']
+    sources = ['IRAS_181622048']
+    #sources = ['NGC6334I']
 
     # Iterate over source config files
     iterover = (CONFIGS / f'{source}.cfg' for source in sources)

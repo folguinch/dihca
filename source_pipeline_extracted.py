@@ -24,7 +24,10 @@ from common_paths import RESULTS, CONFIGS, FIGURES
 # Molecules to analyze
 #MOLECULES = ('CH3OH',)
 #MOLECULES = ('CH3OH', 'CH3CN',)
-MOLECULES = ('CH3CN',)
+#MOLECULES = ('CH3CN',)
+#MOLECULES = ('c-HCOOH',)
+MOLECULES = ('HNCO',)
+#MOLECULES = ('CH2(OD)CHO',)
 
 # Source lists:
 SOURCES_970 = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
@@ -47,8 +50,8 @@ WITH_LINES_PV = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61', 'G29.96-0.02',
 #SOURCES = SOURCES_970 + SOURCES_490
 #SOURCES = WITH_LINES_PV
 #SOURCES = ('G10.62-0.38', 'NGC_6334_I_N')# 'G35.13-0.74')
-SOURCES = ('IRAS_181622048',)
-#SOURCES = ('IRAS_181511208',)
+#SOURCES = ('IRAS_181622048',)
+SOURCES = ('NGC6334I',)
 
 # Source-specific half widths
 HWIDTHS = {
@@ -147,20 +150,22 @@ LINE_LISTS = {
     'SO2': 'CDMS',
     'HC3N': 'CDMS',
     'NH2CHO': 'CDMS',
+    'c-HCOOH': 'CDMS',
+    'CH2(OD)CHO': 'CDMS',
 }
 
 # Molecules and transitions of interest
 LINE_TRANSITIONS = {
     'CH3OH': (#'4(2,3)-5(1,4)A,vt=0',       #spw0
               #'5(4,2)-6(3,3)E,vt=0',
-              '18(3,15)-17(4,14)A,vt=0',
+              #'18(3,15)-17(4,14)A,vt=0',
               #'10(2,9)-9(3,6)A,vt=0',      #spw1
               #'10(2,8)-9(3,7)A,vt=0',
               #'18(3,16)-17(4,13)A,vt=0',
               #'4(-2,3)-3(-1,2)E,vt=0',      #spw2
               #'5(-1,4)-4(-2,3)E,vt=0',
               #'20(-1,19)-20(-0,20)E,vt=0',
-              #'8(-0,8)-7(-1,6)E,vt=0',     #spw3
+              '8(-0,8)-7(-1,6)E,vt=0',     #spw3
               #'23(-5,18)-22(-6,17)E,vt=0',
               #'25(-3,23)-24(-4,20)E,vt=0',
               #'6(1,5)-7(2,6)--,vt=1',      # other
@@ -175,11 +180,13 @@ LINE_TRANSITIONS = {
               '12(3)-11(3)',
               '12(4)-11(4)',
               '12(8)-11(8)'),
+    'c-HCOOH': ('10(4,6)-9(4,5)',),
     '(13)CH3CN': ('13(3)-12(3)',
                   '13(4)-12(4)'),
     'CH3CHO': ('2(2,0)-3(1,3)A++,vt=2',),
-    'HNCO': ('28(1,28)-29(0,29)',
+    'HNCO': (#'28(1,28)-29(0,29)',
              '10(3,8)-9(3,7)',
+             '10(2,9)-9(2,8)',
              '10(0,10)-9(0,9)'),
     'CH3OCHO': ('20(0,20)-19(0,19)A',
                 '32(9,24)-32(8,25)E',
@@ -192,6 +199,7 @@ LINE_TRANSITIONS = {
              'J=24-23,l=2e',
              'J=24-23,l=1f'),
     'NH2CHO': ('11(2,10)-10(2,9)',),
+    'CH2(OD)CHO': ('59(13,46)-59(12,47)',),
 }
 
 # Saved molecules
@@ -201,6 +209,9 @@ SAVED_MOLS = {
     'CH3CN': MOL_DIR / 'ch3cn.json',
     '(13)CH3OH': MOL_DIR / '13ch3oh.json',
     '(13)CH3CN': MOL_DIR / '13ch3cn.json',
+    'c-HCOOH': MOL_DIR / 'c-hcooh.json',
+    'HNCO': MOL_DIR / 'hnco.json',
+    'CH2(OD)CHO': MOL_DIR / 'glycolaldehyde.json',
 }
 
 def search_molecule(source, molecule, array, line_filter=None):
@@ -536,8 +547,9 @@ if __name__ == '__main__':
     #    8: line_cube,
     }
     #skip = [3, 4]
-    skip = [1,2,3]
-    #skip = [4]
+    #skip = [1,2,3]
+    skip = [4]
+    #skip = []
     array = 'c5c8'
 
     # Read sources from command line
@@ -546,7 +558,7 @@ if __name__ == '__main__':
     # Iterate over source config files
     config_dir = CONFIGS / 'extracted'
     for source in sources:
-        for config in config_dir.glob(f'{source}_alma*.cfg'):
+        for config in config_dir.glob(f'{source}_alma1*.cfg'):
             # Open source
             src = Source(config_file=config)
             outdir = RESULTS / src.name / array / 'per_hot_core'

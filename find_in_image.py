@@ -136,8 +136,8 @@ sources = {
     #],
 }
 
-#molec = 'CH3OH'
-molec = 'CH3CN'
+molec = 'CH3OH'
+#molec = 'CH3CN'
 
 for source, coords in sources.items():
     print('=' * 80)
