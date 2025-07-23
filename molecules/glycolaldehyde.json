@@ -1,0 +1,16 @@
+{
+    "name": "CH2(OD)CHO",
+    "transitions": [
+        {
+            "species": "CH2(OD)CHO",
+            "qns": "59(13,46)-59(12,47)",
+            "restfreq": 220.1230194,
+            "restfreq_unit": "GHz",
+            "logaij": -3.63883,
+            "obsfreq": null,
+            "eup": 1093.92147,
+            "eup_unit": "K"
+        }
+    ]
+}
+

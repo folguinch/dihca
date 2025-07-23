@@ -1,0 +1,36 @@
+{
+    "name": "HNCO",
+    "transitions": [
+        {
+            "species": "HNCO v=0",
+            "qns": "10(2,9)-9(2,8)",
+            "restfreq": 219.73385,
+            "restfreq_unit": "GHz",
+            "logaij": -3.87104,
+            "obsfreq": null,
+            "eup": 228.28472,
+            "eup_unit": "K"
+        },
+        {
+            "species": "HNCO v=0",
+            "qns": "10(0,10)-9(0,9)",
+            "restfreq": 219.79832,
+            "restfreq_unit": "GHz",
+            "logaij": -3.8329,
+            "obsfreq": null,
+            "eup": 58.01933,
+            "eup_unit": "K"
+        },
+        {
+            "species": "HNCO v=0",
+            "qns": "10(3,8)-9(3,7)",
+            "restfreq": 219.6567695,
+            "restfreq_unit": "GHz",
+            "logaij": -3.92039,
+            "obsfreq": null,
+            "eup": 432.95982,
+            "eup_unit": "K"
+        }
+    ]
+}
+
