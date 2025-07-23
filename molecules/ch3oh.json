@@ -90,6 +90,16 @@
             "obsfreq": null,
             "eup": 508.37554,
             "eup_unit": "K"
+        },
+        {
+            "species": "CH3OH vt=0-2",
+            "qns": "8(-0,8)-7(-1,6)E,vt=0",
+            "restfreq": 220.078561,
+            "restfreq_unit": "GHz",
+            "logaij": -4.59926,
+            "obsfreq": null,
+            "eup": 96.61365,
+            "eup_unit": "K"
         }
     ]
 }
