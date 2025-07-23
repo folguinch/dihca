@@ -137,7 +137,7 @@ def find_edge(slcs, fn, data, beam, delta=2, inverted=False):
     return np.array(edge_points), np.array(edge_errors)*beam.unit
 
 def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None,
-             ylim=None, ncomponents=1):
+             ylim=None, ncomponents=1, save_edge=True):
     # Open data
     image = fits.open(fitsfile)[0]
     mask = image.data > rms * nsigma
@@ -148,7 +148,6 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None,
     mask, labels, nlabels = mask_structures(mask)
     component_sizes = np.bincount(labels.ravel())
     max_component = None
-    print(np.sort(component_sizes[1:])[::-1])
     for comp_size in np.sort(component_sizes[1:])[::-1][:ncomponents]:
         aux = component_sizes == comp_size
         if max_component is None:
@@ -160,8 +159,9 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None,
 
     # Save mask
     hdu = fits.PrimaryHDU(data=mask.astype(int), header=image.header)
-    hdu.writeto(fitsfile.with_suffix(f'.{nsigma}sigma.mask.fits'),
-                overwrite=True)
+    if save_edge:
+        hdu.writeto(fitsfile.with_suffix(f'.{nsigma}sigma.mask.fits'),
+                    overwrite=True)
 
     # Get structures
     image_masked = np.ma.array(image.data, mask=~mask)
@@ -231,19 +231,24 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None,
         edges_x = edges_x[ymask]
         edges_y = edges_y[ymask]
         errors = errors[ymask]
-    as_sarray = np.array(list(zip(edges_x.value,
-                                  errors.value,
-                                  edges_y.value,
-                                  np.repeat(yerr.value, len(errors)))),
-                         dtype=[(head1, float), (f'{head1}_error', float),
-                                (head2, float), (f'{head2}_error', float)])
-    units = {head1: u.arcsec,
-             f'{head1}_error': u.arcsec,
-             head2: u.km/u.s,
-             f'{head2}_error': u.km/u.s,
-             }
-    save_struct_array(fitsfile.with_suffix('.edge.dat'), as_sarray, units,
-                      fmt='%10.8e\t')
+    if save_edge:
+        as_sarray = np.array(
+            list(zip(edges_x.value,
+                     errors.value,
+                     edges_y.value,
+                     np.repeat(yerr.value, len(errors)))),
+            dtype=[(head1, float), (f'{head1}_error', float),
+                   (head2, float), (f'{head2}_error', float)]
+        )
+        units = {head1: u.arcsec,
+                 f'{head1}_error': u.arcsec,
+                 head2: u.km/u.s,
+                 f'{head2}_error': u.km/u.s,
+                 }
+        save_struct_array(fitsfile.with_suffix('.edge.dat'),
+                          as_sarray,
+                          units,
+                          fmt='%10.8e\t')
 
     # Convert to quantitites
     vsys = vsys * unit2
@@ -251,7 +256,7 @@ def get_edge(fitsfile, rms, nsigma=3, delta=2, quadrant=1, xlim=None,
     return (edges_x, edges_y), (errors, yerr), vsys.to(u.km/u.s)
 
 def fit_edge(fitsfile, edges, errors, vsys, distance, rms, name, nsigma=3,
-             plot_config=None):
+             write_config=True, plot_results=True, plot_config=None):
     # Open data
     image = fits.open(fitsfile)[0]
     xaxis, yaxis = get_coord_axes(image)
@@ -259,9 +264,13 @@ def fit_edge(fitsfile, edges, errors, vsys, distance, rms, name, nsigma=3,
     yaxis = yaxis.to(u.km/u.s)
 
     # Fit power law
-    print('Initial vsys:', vsys)
     fit_x, fit_y = edges
     errx, erry = errors
+    if len(fit_x) < 2 or np.all(fit_x < 0) or np.all(fit_x > 0):
+        keplerian = ModelData(*(np.inf,)*10, 'No data')
+        unrestricted = ModelData(*(np.inf,)*10, 'No data')
+        return unrestricted, keplerian, np.inf * u.M_sun
+    print('Initial vsys:', vsys)
     data = RealData(fit_x.value, fit_y.value, sx=errx.value, sy=erry.value)
     #amplitude = np.max(fit_y) - vsys.to(fit_y.unit)
     x_0 = 100 / distance.to(u.pc).value * u.arcsec
@@ -315,75 +324,79 @@ def fit_edge(fitsfile, edges, errors, vsys, distance, rms, name, nsigma=3,
     print('Keplerian mass: ', mass, '+/-', sd_mass)
 
     # Config section and write results
-    unrestricted_txt = unrestricted.to_txt()
-    keplerian_txt = keplerian.to_txt()
-    yunit_str = f'{fit_y.unit}'.replace(' ', '')
-    sect1 = [f'[{name}_pvedge]',
-             f"structured_array = {fitsfile.with_suffix('.edge.dat')}",
-             'marker = o',
-             'color = #46eff2',
-             'linestyle = none',
-             'plot_keys = OFFSET, VRAD']
-    sect2 = [f'[{name}_keplerian_fit]',
-             'function = piecewise_powerlaw',
-             f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
-             f'yunit = {yunit_str}',
-             'sampling = 500',
-             'linestyle = --',
-             'color = #eb5252',
-             f'model_mass = {mass}',
-             f'model_sd_mass = {sd_mass}']
-    sect3 = [f'[{name}_unrestricted_fit]',
-             'function = piecewise_powerlaw',
-             f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
-             f'yunit = {yunit_str}',
-             'sampling = 500',
-             'linestyle = -',
-             'color = #adacac']
-    text = ('\n'.join(sect1) + '\n'*2 +
-            '\n'.join(sect2) + '\n' + keplerian_txt + '\n'*2 +
-            '\n'.join(sect3) + '\n' + unrestricted_txt)
-    config = fitsfile.with_suffix('.plot.cfg')
-    config.write_text(text)
-    if plot_config is not None:
-        update_plot_config(plot_config, config)
+    if write_config:
+        unrestricted_txt = unrestricted.to_txt()
+        keplerian_txt = keplerian.to_txt()
+        yunit_str = f'{fit_y.unit}'.replace(' ', '')
+        sect1 = [f'[{name}_pvedge]',
+                 f"structured_array = {fitsfile.with_suffix('.edge.dat')}",
+                 'marker = o',
+                 'color = #46eff2',
+                 'linestyle = none',
+                 'plot_keys = OFFSET, VRAD']
+        sect2 = [f'[{name}_keplerian_fit]',
+                 'function = piecewise_powerlaw',
+                 f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
+                 f'yunit = {yunit_str}',
+                 'sampling = 500',
+                 'linestyle = --',
+                 'color = #eb5252',
+                 f'model_mass = {mass}',
+                 f'model_sd_mass = {sd_mass}']
+        sect3 = [f'[{name}_unrestricted_fit]',
+                 'function = piecewise_powerlaw',
+                 f'xrange = {xaxis[0].value} {xaxis[-1].value} {xaxis.unit}',
+                 f'yunit = {yunit_str}',
+                 'sampling = 500',
+                 'linestyle = -',
+                 'color = #adacac']
+        text = ('\n'.join(sect1) + '\n'*2 +
+                '\n'.join(sect2) + '\n' + keplerian_txt + '\n'*2 +
+                '\n'.join(sect3) + '\n' + unrestricted_txt)
+        config = fitsfile.with_suffix('.plot.cfg')
+        config.write_text(text)
+        if plot_config is not None:
+            update_plot_config(plot_config, config)
 
     # Quick look at fit
-    newx = np.linspace(0., xaxis[-1].value, 500)
-    extent = [xaxis[0].value, xaxis[-1].value,
-              yaxis[0].value, yaxis[-1].value]
-    fig, ax = plt.subplots()
-    ax.imshow(image.data, origin='lower', extent=extent)
-    ax.contour(image.data, levels=[rms * nsigma], extent=extent)
-    ax.plot(fit_x, fit_y, 'ro')
-    ax.plot(newx + unrestricted.off0,
-            unrestricted(newx + unrestricted.off0),
-            -newx + unrestricted.off0,
-            unrestricted(-newx + unrestricted.off0),
-            linestyle='-', color='k')
-    #ax.plot(-newx + unrestricted.x_mid,
-    #        unrestricted(-newx + unrestricted.x_mid), 'k-')
-    ax.plot(newx + keplerian.off0,
-            keplerian(newx + keplerian.off0), 'b--')
-    ax.plot(-newx + keplerian.off0,
-            keplerian(-newx + keplerian.off0), 'b--')
-    ax.axhline(unrestricted.vsys, color='g', ls=':')
-    ax.axhline(unrestricted.vsys, color='g', ls='--')
-    ax.axvline(unrestricted.off0, color='g', ls='--')
-    ax.set_xlim(xaxis[0].value, xaxis[-1].value)
-    ax.set_ylim(yaxis[0].value, yaxis[-1].value)
-    ax.set_xlabel('Offset (arcsec)')
-    ax.set_ylabel('Radial Velocity (km/s)')
-    ax.set_aspect('auto') 
-    fig.savefig(fitsfile.with_suffix('.edges.png'))
+    if plot_results:
+        newx = np.linspace(0., xaxis[-1].value, 500)
+        extent = [xaxis[0].value, xaxis[-1].value,
+                  yaxis[0].value, yaxis[-1].value]
+        fig, ax = plt.subplots()
+        ax.imshow(image.data, origin='lower', extent=extent)
+        ax.contour(image.data, levels=[rms * nsigma], extent=extent)
+        ax.plot(fit_x, fit_y, 'ro')
+        ax.plot(newx + unrestricted.off0,
+                unrestricted(newx + unrestricted.off0),
+                -newx + unrestricted.off0,
+                unrestricted(-newx + unrestricted.off0),
+                linestyle='-', color='k')
+        #ax.plot(-newx + unrestricted.x_mid,
+        #        unrestricted(-newx + unrestricted.x_mid), 'k-')
+        ax.plot(newx + keplerian.off0,
+                keplerian(newx + keplerian.off0), 'b--')
+        ax.plot(-newx + keplerian.off0,
+                keplerian(-newx + keplerian.off0), 'b--')
+        ax.axhline(unrestricted.vsys, color='g', ls=':')
+        ax.axhline(unrestricted.vsys, color='g', ls='--')
+        ax.axvline(unrestricted.off0, color='g', ls='--')
+        ax.set_xlim(xaxis[0].value, xaxis[-1].value)
+        ax.set_ylim(yaxis[0].value, yaxis[-1].value)
+        ax.set_xlabel('Offset (arcsec)')
+        ax.set_ylabel('Radial Velocity (km/s)')
+        ax.set_aspect('auto') 
+        fig.savefig(fitsfile.with_suffix('.edges.png'))
 
-    fig, ax = plt.subplots()
-    ax.plot(np.log10(np.abs(fit_x.value - unrestricted.off0)),
-            np.log10(np.abs(fit_y.value - unrestricted.vsys)),
-            'kx')
-    ax.set_xlabel('log(Offset / arcsec)')
-    ax.set_ylabel('log(|$v_{rad} - v_{sys}$| / km/s)')
-    fig.savefig(fitsfile.with_suffix('.profile.png'))
+        fig, ax = plt.subplots()
+        ax.plot(np.log10(np.abs(fit_x.value - unrestricted.off0)),
+                np.log10(np.abs(fit_y.value - unrestricted.vsys)),
+                'kx')
+        ax.set_xlabel('log(Offset / arcsec)')
+        ax.set_ylabel('log(|$v_{rad} - v_{sys}$| / km/s)')
+        fig.savefig(fitsfile.with_suffix('.profile.png'))
+
+    return unrestricted, keplerian, mass
 
 if __name__ == '__main__':
     # Summary information
@@ -391,8 +404,8 @@ if __name__ == '__main__':
     source_info.read(CONFIGS / 'extracted/summary.cfg')
 
     for section in source_info.sections():
-        if section not in ['IRAS_181622048_alma1_c-hcooh']:
-            continue
+        #if section not in ['G333.46-0.16_alma1_hnco']:
+        #    continue
         print('Working on section: ', section)
         config = source_info[section]
         name = config['name'] + '_alma' + config['alma']
