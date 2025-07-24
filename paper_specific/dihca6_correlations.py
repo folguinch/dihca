@@ -1,4 +1,6 @@
 """DIHCA VI: Spearman coeficient for different relations"""
+from astropy.modeling.models import Linear1D
+from astropy.modeling.fitting import LinearLSQFitter
 from astropy.table import Table
 from scipy.stats import spearmanr
 import numpy as np
@@ -32,20 +34,62 @@ print(f'Central mass vs. distance: {massvdist.statistic}',
 # Mass and luminosity
 lum = table['wlum']
 mass = table['mass_cen']
-lumvmass = spearmanr(mass, lum)
+lumvmass = spearmanr(np.log10(mass), np.log10(lum))
 print('With outliers:')
 print(f'Luminosity vs. mass: {lumvmass.statistic}',
       f'(p-value = {lumvmass.pvalue})')
-lum = np.ma.masked_where(
-    (table['#Source'] == 'G10.62-0.38') | 
+mask1 = (
+    (table['#Source'] == 'G10.62-0.38') |
     ((table['#Source'] == 'G335.579-0.272') & (table['ALMA'] == '1')) |
-    (table['#Source'] == 'G35.20-0.74 N'), lum)
+    (table['#Source'] == 'G35.20-0.74 N'))
+mask2 = (
+    (table['molec'] != 'CH3CN') &
+    (table['molec'] != 'CH3OH')
+    )
+lum = np.ma.masked_where(mask1 | mask2, lum)
 mass = np.ma.array(table['mass_cen'], mask=lum.mask)
-lumvmass = spearmanr(mass.compressed(), lum.compressed())
+lumvmass = spearmanr(np.log10(mass.compressed()), np.log10(lum.compressed()))
 print('Without outliers:')
 print(f'Luminosity vs. mass: {lumvmass.statistic}',
       f'(p-value = {lumvmass.pvalue})')
 
 # Fit
-fit = np.polyfit(np.log10(mass), np.log10(lum), 1)
+#fit = np.polyfit(np.log10(mass), np.log10(lum), 1)
+#print(fit)
+print('M-L relation:')
+fitter = LinearLSQFitter()
+model = Linear1D(slope=2.5, intercept=0.1)
+fit = fitter(model, np.log10(mass.compressed()), np.log10(lum.compressed()))
 print(fit)
+
+# Condensations
+print('Stellar/disk mass vs radius:')
+intermediate = RESULTS / 'tables/beltran_dewit_im_stars.csv'
+highmass = RESULTS / 'tables/beltran_dewit_hm_stars.csv'
+condensations = RESULTS / 'tables/dihca6_condensations.csv'
+intermediate = Table.read(intermediate)
+highmass = Table.read(highmass)
+condensations = Table.read(condensations)
+ratio1 = np.array(condensations['yso_mass']/condensations['mass_cen'])
+ratio2 = np.append(ratio1, np.array(intermediate['Mgas']/intermediate['Mstar']))
+ratio2 = np.append(ratio2, np.array(highmass['Mgas']/highmass['Mstar']))
+radius = np.array(condensations['yso_radii'])
+radius = np.append(radius, np.array(intermediate['radius']))
+radius = np.append(radius, np.array(highmass['radius']))
+ratiovradius = spearmanr(np.log10(radius), np.log10(ratio2))
+print((f'With outliers: {ratiovradius.statistic}'
+       f'(p-value = {ratiovradius.pvalue})'))
+mask = ratio2 > 0.01
+ratiovradius = spearmanr(np.log10(radius[mask]), np.log10(ratio2[mask]))
+print((f'Without outliers: {ratiovradius.statistic}'
+       f'(p-value = {ratiovradius.pvalue})'))
+
+# Mg/Mc vs distance
+print('Stellar/disk mass vs distance:')
+ratiovdistance = spearmanr(np.array(condensations['distance']), ratio1)
+print((f'With outliers: {ratiovdistance.statistic}'
+       f'(p-value = {ratiovdistance.pvalue})'))
+mask = ratio1 > 0.01
+ratiovdistance = spearmanr(np.array(condensations['distance'])[mask], ratio1[mask])
+print((f'Without outliers: {ratiovdistance.statistic}'
+       f'(p-value = {ratiovdistance.pvalue})'))

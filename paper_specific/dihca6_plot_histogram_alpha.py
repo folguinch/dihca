@@ -15,7 +15,7 @@ summary = Table.read(summary)
 # Bins
 alpha = np.array(summary['alpha'])
 alpha = np.ma.masked_where(alpha>=2, alpha)
-bin_edges = np.histogram_bin_edges(alpha.compressed(), bins='auto')
+bin_edges = np.histogram_bin_edges(alpha.compressed(), bins='fd')
 counts, bins = np.histogram(alpha.compressed(), bins=bin_edges)
 
 # By molecule
@@ -28,10 +28,12 @@ ax.hist(bins[:-1], bins, weights=counts, label='Total')
 colors = {'CH3CN': 'g',
           'CH3OH':'r'}
 for molec, group in zip(by_molecule.groups.keys, by_molecule.groups):
+    if molec['molec'] not in colors:
+        continue
     alpha = np.ma.masked_where(group['alpha']>=2, group['alpha'])
     counts_group, _ = np.histogram(alpha.compressed(), bins=bin_edges)
     ax.hist(bins[:-1], bins, weights=counts_group, label=molec['molec'],
-            color=colors[molec['molec']], alpha=0.8)
+            color=colors[molec['molec']], alpha=0.6)
 ax.legend()
 ax.set_xlabel(r'Index $\alpha$')
 ax.set_ylabel('Number')
