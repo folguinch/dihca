@@ -37,23 +37,43 @@ ax3 = fig.add_axes((0.08, 0.06, 0.4, 0.4))
 
 # Relation 1
 ratio = condensations['mdisk']/condensations['mstar']
-ax1.loglog(archive_im['radius'], archive_im['mdisk']/archive_im['mstar'], 'ko')
-ax1.loglog(archive_hm['radius'], archive_hm['mdisk']/archive_hm['mstar'], 'r^')
-ax1.loglog(condensations['radius'], ratio, 'bs')
+implot1, = ax1.loglog(archive_im['radius'],
+                      archive_im['mdisk']/archive_im['mstar'],
+                      'ko',
+                      label='Intermediate mass')
+hmplot1, = ax1.loglog(archive_hm['radius'],
+                      archive_hm['mdisk']/archive_hm['mstar'],
+                      'r^',
+                      label='High-mass')
+dihcaplot1, = ax1.loglog(condensations['radius'],
+                         ratio,
+                         'bs',
+                         label='High-mass DIHCA')
 ax1.set_xlabel('Disk radius (au)')
 ax1.set_ylabel(r'$M_g/M_c$')
+ax1.legend(handles=[implot1, hmplot1, dihcaplot1], fontsize='x-small')
 ax1.annotate('(a)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
 ax1.xaxis.set_major_formatter(tick_formatter('log'))
 ax1.yaxis.set_major_formatter(tick_formatter('log'))
-print(condensations[ratio < 0.01])
 
 # Relation 2
-ax2.loglog(archive_im['mstar'], archive_im['mdisk'], 'ko')
-ax2.loglog(archive_hm['mstar'], archive_hm['mdisk'], 'r^')
-ax2.loglog(condensations['mstar'], condensations['mdisk'], 'bs')
+implot2, = ax2.loglog(archive_im['mstar'],
+                      archive_im['mdisk'],
+                      'ko',
+                      label='Intermediate mass')
+hmplot2, = ax2.loglog(archive_hm['mstar'],
+                      archive_hm['mdisk'],
+                      'r^',
+                      label='High-mass')
+dihcaplot2, = ax2.loglog(condensations['mstar'],
+                         condensations['mdisk'],
+                         'bs',
+                         label='High-mass DIHCA')
 ax2.set_xlabel(r'$M_c$ (M$_\odot$)')
 ax2.set_ylabel(r'$M_g$ (M$_\odot$)', labelpad=-0.2)
 ax2.annotate('(b)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
+ax2.legend(handles=[implot2, hmplot2, dihcaplot2], fontsize='x-small',
+           loc='lower left')
 ax2.xaxis.set_major_formatter(tick_formatter('log'))
 ax2.yaxis.set_major_formatter(tick_formatter('log'))
 
@@ -79,7 +99,7 @@ xlim = ax3.get_xlim()
 xval = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
 ms1 = 10**1.47 * xval**1.66
 ms2 = 10**1.237 * xval**2.726
-ax3.loglog(xval, ms1, 'g--')
+ax3.loglog(xval, ms1, 'g-.')
 ax3.loglog(xval, ms2, 'm--')
 ax3.set_ylim(100, 1e6)
 ax3.annotate('(c)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
