@@ -1,4 +1,5 @@
 """Unified plotter script."""
+from pathlib import Path
 import sys
 
 from tile_plotter.plotter import plotter
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     configs = sys.argv[1:]
     if len(configs) != 0:
         for config in configs:
-            by_config(config, flags)
+            by_config(Path(config), flags)
     elif BY_GROUP:
         by_group(config_dir, skip, flags)
     elif len(sources) > 0:
