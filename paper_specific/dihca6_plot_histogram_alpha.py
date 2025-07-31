@@ -17,6 +17,8 @@ alpha = np.array(summary['alpha'])
 alpha = np.ma.masked_where(alpha>=2, alpha)
 bin_edges = np.histogram_bin_edges(alpha.compressed(), bins='fd')
 counts, bins = np.histogram(alpha.compressed(), bins=bin_edges)
+median = np.ma.median(alpha)
+print('Alpha median:', median)
 
 # By molecule
 by_molecule = summary.group_by('molec')

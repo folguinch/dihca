@@ -57,14 +57,14 @@ ax1.xaxis.set_major_formatter(tick_formatter('log'))
 ax1.yaxis.set_major_formatter(tick_formatter('log'))
 
 # Relation 2
-implot2, = ax2.loglog(archive_im['mstar'],
-                      archive_im['mdisk'],
-                      'ko',
-                      label='Intermediate mass')
-hmplot2, = ax2.loglog(archive_hm['mstar'],
-                      archive_hm['mdisk'],
-                      'r^',
-                      label='High-mass')
+#implot2, = ax2.loglog(archive_im['mstar'],
+#                      archive_im['mdisk'],
+#                      'ko',
+#                      label='Intermediate mass')
+#hmplot2, = ax2.loglog(archive_hm['mstar'],
+#                      archive_hm['mdisk'],
+#                      'r^',
+#                      label='High-mass')
 dihcaplot2, = ax2.loglog(condensations['mstar'],
                          condensations['mdisk'],
                          'bs',
@@ -72,8 +72,8 @@ dihcaplot2, = ax2.loglog(condensations['mstar'],
 ax2.set_xlabel(r'$M_c$ (M$_\odot$)')
 ax2.set_ylabel(r'$M_g$ (M$_\odot$)', labelpad=-0.2)
 ax2.annotate('(b)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
-ax2.legend(handles=[implot2, hmplot2, dihcaplot2], fontsize='x-small',
-           loc='lower left')
+#ax2.legend(handles=[implot2, hmplot2, dihcaplot2], fontsize='x-small',
+#           loc='lower left')
 ax2.xaxis.set_major_formatter(tick_formatter('log'))
 ax2.yaxis.set_major_formatter(tick_formatter('log'))
 
