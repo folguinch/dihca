@@ -1,11 +1,13 @@
 """Unified plotter script."""
+import sys
 
 from tile_plotter.plotter import plotter
 
 from common_paths import CONFIGS, FIGURES
 
 SKIP = [1, 3, 4, 5]
-PLOT_TYPE = 'papers'
+#PLOT_TYPE = 'papers'
+PLOT_TYPE = 'posters'
 STEPS = {
     1: 'continuum',
     2: 'moments',
@@ -55,6 +57,14 @@ def by_group(config_dir, skip, flags):
             plotter([f'{config}', f'{plotname}'] + flags)
             print('=' * 100)
 
+def by_config(config, flags):
+    plot_dir = FIGURES / f'by_config'
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    print(f'Plotting {config}')
+    plotname = plot_dir / config.with_suffix('.png').name
+    plotter([f'{config}', f'{plotname}'] + flags)
+    print('=' * 100)
+
 if __name__ == '__main__':
     skip = SKIP
     config_dir = CONFIGS / 'plots' / PLOT_TYPE
@@ -76,11 +86,15 @@ if __name__ == '__main__':
 
     # Flags
     flags = []
-    if PLOT_TYPE == 'papers':
+    if PLOT_TYPE in ['papers', 'posters']:
         flags = ['--pdf']
 
     # Plot
-    if BY_GROUP:
+    configs = sys.argv[1:]
+    if len(configs) != 0:
+        for config in configs:
+            by_config(config, flags)
+    elif BY_GROUP:
         by_group(config_dir, skip, flags)
     elif len(sources) > 0:
         by_source(sources, config_dir, skip, flags, filters=filters)
