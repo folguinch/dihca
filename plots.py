@@ -88,7 +88,7 @@ if __name__ == '__main__':
     # Flags
     flags = []
     if PLOT_TYPE in ['papers', 'posters']:
-        flags = ['--pdf']
+        flags = ['--pdf', '--eps']
 
     # Plot
     configs = sys.argv[1:]
