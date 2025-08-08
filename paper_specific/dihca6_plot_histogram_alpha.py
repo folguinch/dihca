@@ -42,3 +42,4 @@ ax.set_ylabel('Number')
 
 fig.savefig(FIGURES / 'papers/dihca6_alpha_histogram.png', bbox_inches='tight')
 fig.savefig(FIGURES / 'papers/dihca6_alpha_histogram.pdf', bbox_inches='tight')
+fig.savefig(FIGURES / 'papers/dihca6_alpha_histogram.eps', bbox_inches='tight')
