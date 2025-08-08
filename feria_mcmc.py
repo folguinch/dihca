@@ -20,7 +20,7 @@ import numpy as np
 
 from common_paths import CONFIGS
 
-FERIA = Path('~/clones/feria/feria').expanduser()
+FERIA = Path('~/clones/FERIA/feria').expanduser()
 TEMPLATE = CONFIGS / 'templates/feria_template.in'
 
 class Observation:
@@ -57,14 +57,16 @@ class Observation:
         self.data = {'cube': Path(parser[section]['file'])}
         rms = parser[section]['rms'].split()
         rms = float(rms[0]) * u.Unit(rms[1])
-        masked_cube, unit, beam, ra, dec, vel = self.get_cube_pars(rms,
-                                                                   restfreq)
+        masked_cube, unit, beam, ra, dec, vel, wcs = self.get_cube_pars(
+            rms,
+            restfreq)
         self.data['rms'] = rms.to(unit)
         self.data['masked_cube'] = masked_cube
         self.data['beam'] = beam
         self.data['ra'] = ra
         self.data['dec'] = dec
         self.data['vel'] = vel - vlsr
+        self.data['wcs'] = wcs
 
         # Store beam in obs params
         self.obs_pars['bmaj'] = f'{beam.major.to(u.arcsec).value}'
@@ -103,7 +105,7 @@ class Observation:
                                   header=cube.wcs.to_header())
             hdu.writeto(maskfile)
 
-        return data, unit, beam, ra, dec, vel
+        return data, unit, beam, ra, dec, vel, cube.wcs
 
 class Model:
     pars: Dict
@@ -205,7 +207,10 @@ def log_posterior(params: Dict, **kwargs):
         chi2 = (obs.data['masked_cube'] - new_cube)**2 / sigma**2
         term2 = -0.5 * np.ma.sum(chi2)
 
-        # Remove model cube
+        # Save model cube
+        spcube = SpectralCube(data=new_cube, wcs=obs.data['wcs'])
+        spcube.write(model_cube.with_suffix('.interp.fits'))
+        raise Exception
      
         return term1 + term2
 

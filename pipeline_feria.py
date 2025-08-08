@@ -16,14 +16,14 @@ from feria_mcmc import log_posterior, Observation, Model
 MOLECULE = 'CH3OH'
 TRANSITION = '18(3,15)-17(4,14)A,vt=0'
 SOURCES = {
-    'G335.579-0.272': ('hmc2',),
+    'G335.579-0.272': ('alma3',),
 }
 SECTIONS = {
     'CH3OH': ('b6_c5c8_spw0_1000_CH3OH_18_3_15_-17_4_14_A_vt_0',
               'CH3OH_spw0'),
 }
 NWALKERS, NSTEPS, NBURN = 120, 250, 180
-NCORE = 7
+NCORE = 1
 #NWALKERS, NSTEPS, NBURN = 15, 30, 10
 #NCORE = 10
 
