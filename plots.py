@@ -7,8 +7,8 @@ from tile_plotter.plotter import plotter
 from common_paths import CONFIGS, FIGURES
 
 SKIP = [1, 3, 4, 5]
-#PLOT_TYPE = 'papers'
-PLOT_TYPE = 'posters'
+PLOT_TYPE = 'papers'
+#PLOT_TYPE = 'posters'
 STEPS = {
     1: 'continuum',
     2: 'moments',
