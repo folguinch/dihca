@@ -24,9 +24,9 @@ from common_paths import RESULTS, CONFIGS, FIGURES
 # Molecules to analyze
 #MOLECULES = ('CH3OH',)
 #MOLECULES = ('CH3OH', 'CH3CN',)
-#MOLECULES = ('CH3CN',)
+MOLECULES = ('CH3CN',)
 #MOLECULES = ('c-HCOOH',)
-MOLECULES = ('HNCO',)
+#MOLECULES = ('HNCO',)
 #MOLECULES = ('CH2(OD)CHO',)
 
 # Source lists:
@@ -47,11 +47,15 @@ WITH_LINES_PV = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61', 'G29.96-0.02',
                  'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A', 'G35.13-0.74',
                  'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
                  'IRAS_180891732', 'IRAS_18182-1433', 'NGC_6334_I_N', 'W33A')
+WITH_K8 = ('G10.62-0.38_alma1a', 'G11.92-0.61_alma1a', 'G333.46-0.16_alma1',
+           'IRAS_180891732_alma1', 'IRAS_18182-1433_alma2',
+           'IRAS_18182-1433_alma3')
 #SOURCES = SOURCES_970 + SOURCES_490
 #SOURCES = WITH_LINES_PV
 #SOURCES = ('G10.62-0.38', 'NGC_6334_I_N')# 'G35.13-0.74')
 #SOURCES = ('IRAS_181622048',)
-SOURCES = ('NGC6334I',)
+#SOURCES = ('NGC6334I',)
+SOURCES = WITH_K8
 
 # Source-specific half widths
 HWIDTHS = {
@@ -547,8 +551,8 @@ if __name__ == '__main__':
     #    8: line_cube,
     }
     #skip = [3, 4]
-    #skip = [1,2,3]
-    skip = [4]
+    skip = [1,2,3]
+    #skip = [4]
     #skip = []
     array = 'c5c8'
 
@@ -558,7 +562,7 @@ if __name__ == '__main__':
     # Iterate over source config files
     config_dir = CONFIGS / 'extracted'
     for source in sources:
-        for config in config_dir.glob(f'{source}_alma1*.cfg'):
+        for config in config_dir.glob(f'{source}*.cfg'):
             # Open source
             src = Source(config_file=config)
             outdir = RESULTS / src.name / array / 'per_hot_core'
