@@ -55,7 +55,8 @@ WITH_K8 = ('G10.62-0.38_alma1a', 'G11.92-0.61_alma1a', 'G333.46-0.16_alma1',
 #SOURCES = ('G10.62-0.38', 'NGC_6334_I_N')# 'G35.13-0.74')
 #SOURCES = ('IRAS_181622048',)
 #SOURCES = ('NGC6334I',)
-SOURCES = WITH_K8
+#SOURCES = WITH_K8
+SOURCES = ('G333.23-0.06_alma3b', )
 
 # Source-specific half widths
 HWIDTHS = {
