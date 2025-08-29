@@ -89,6 +89,7 @@ SAVED_MOLS = {
     'CH3CN': MOL_DIR / 'ch3cn.json',
     '(13)CH3OH': MOL_DIR / '13ch3oh.json',
     '(13)CH3CN': MOL_DIR / '13ch3cn.json',
+    'SiO': MOL_DIR / 'sio.json',
 }
 
 def search_molecule(source, molecule, array):
@@ -364,12 +365,12 @@ def pv_rotation(pvconfig, source, outdir, figures, array):
     pvmap_fitter(list(map(str, pvmaps)) + flags)
 
 def split_moments(source, outdir, configs, figures, array,
-                  #molecules=['SiO', '(13)CO'],
-                  molecules=['CH3OH'],
+                  molecules=['SiO'],#, '(13)CO'],
+                  #molecules=['CH3OH'],
                   # SiO 480kHz
-                  #chansep=5, chanwidth=6, bandwidth=80):
+                  chansep=5, chanwidth=6, bandwidth=80):
                   # CH3OH 900kHz
-                  chansep=3, chanwidth=3, bandwidth=10):
+                  #chansep=3, chanwidth=3, bandwidth=10):
                   # CH3OH 480kHz
                   #chansep=3, chanwidth=4, bandwidth=20):
     # Calculate split moments
@@ -502,25 +503,39 @@ if __name__ == '__main__':
         7: peak_maps,
         8: line_cube,
     }
-    skip = [1, 2, 3, 4, 5, 6, 7]
-    array = 'c5c8'
+    skip = [1, 3, 4, 5, 6, 7, 8]
+    #array = 'c5c8'
+    array = 'c5'
 
     # Read sources from command line
-    sources_970kHz = ['G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
-                      'G34.43+0.24MM2', 'G35.13-0.74', 'G5.89-0.37',
-                      'IRAS_181511208', 'IRAS_18182-1433', 'IRDC_182231243',
-                      'W33A', 'IRAS_180891732']
-    sources_490kHz = ['G14.22-0.50_S', 'G24.60+0.08', 'G29.96-0.02',
-                      'G333.12-0.56', 'G333.23-0.06', 'G333.46-0.16',
-                      'G335.579-0.272', 'G335.78+0.17', 'G336.01-0.82',
-                      'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
-                      'G35.20-0.74_N', 'G351.77-0.54', 'IRAS_165623959',
-                      'IRAS_18337-0743', 'NGC6334I', 'NGC_6334_I_N']
+    sources_970kHz = ['G10.62-0.38',
+                      'G11.1-0.12',
+                      'G11.92-0.61',
+                      'G34.43+0.24MM2',
+                      'G35.13-0.74',
+                      'G5.89-0.37',
+                      'IRAS_181511208',
+                      'IRAS_18182-1433',
+                      'IRDC_182231243',
+                      'W33A',
+                      'IRAS_180891732']
+    sources_490kHz = [#'G14.22-0.50_S',
+                      #'G24.60+0.08',
+                      #'G29.96-0.02',
+                      #'G333.12-0.56', 'G333.23-0.06', 'G333.46-0.16',
+                      #'G335.579-0.272', 'G335.78+0.17', 'G336.01-0.82',
+                      #'G34.43+0.24', 'G343.12-0.06', 'G35.03+0.35_A',
+                      #'G35.20-0.74_N', 'G351.77-0.54',
+                      #'IRAS_165623959',
+                      #'IRAS_18337-0743',
+                      #'NGC6334I',
+                      'NGC_6334_I_N']
     #sources = ['G14.22-0.50_S']
     #sources = sources_490kHz
     #sources = ['NGC_6334_I_N', 'W33A', 'G10.62-0.38', 'G35.13-0.74']
-    sources = ['IRAS_181622048']
+    #sources = ['IRAS_181622048']
     #sources = ['NGC6334I']
+    sources = sources_490kHz
 
     # Iterate over source config files
     iterover = (CONFIGS / f'{source}.cfg' for source in sources)
