@@ -26,6 +26,7 @@ print(by_molecule.groups.keys)
 #counts_methanol, _ = np.histogram(by_molecule, bins=bin_edges)
 
 fig, ax = plt.subplots(1, 1)
+print(bins)
 ax.hist(bins[:-1], bins, weights=counts, label='Total')
 colors = {'CH3CN': 'g',
           'CH3OH':'r'}
