@@ -31,7 +31,7 @@ print(f'Alpha vs. distance: {alphavdist.statistic}',
 print(f'Central mass vs. distance: {massvdist.statistic}',
       f'(p-value = {massvdist.pvalue})')
 
-# Mass and luminosity
+# Central mass and luminosity
 lum = table['wlum']
 mass = table['mass_cen']
 lumvmass = spearmanr(np.log10(mass), np.log10(lum))
@@ -50,50 +50,57 @@ lum = np.ma.masked_where(mask1 | mask2, lum)
 mass = np.ma.array(table['mass_cen'], mask=lum.mask)
 lumvmass = spearmanr(np.log10(mass.compressed()), np.log10(lum.compressed()))
 print('Without outliers:')
-print(f'Luminosity vs. mass: {lumvmass.statistic}',
+print(f'Luminosity vs. central mass: {lumvmass.statistic}',
       f'(p-value = {lumvmass.pvalue})')
 
 # Fit
 #fit = np.polyfit(np.log10(mass), np.log10(lum), 1)
 #print(fit)
-print('M-L relation:')
 fitter = LinearLSQFitter()
 model = Linear1D(slope=2.5, intercept=0.1)
 fit = fitter(model, np.log10(mass.compressed()), np.log10(lum.compressed()))
-print(fit)
+print('M-L relation:', fit)
 
 # Condensations
-print('Stellar/disk mass vs radius:')
+print('Disk/stellar mass vs radius:')
 intermediate = RESULTS / 'tables/beltran_dewit_im_stars.csv'
 highmass = RESULTS / 'tables/beltran_dewit_hm_stars.csv'
 intermediate = Table.read(intermediate)
 highmass = Table.read(highmass)
-ratio1 = np.array(table['disk_mass']/table['mass_cen'])
-ratio2 = np.append(ratio1, np.array(intermediate['Mgas']/intermediate['Mstar']))
-ratio2 = np.append(ratio2, np.array(highmass['Mgas']/highmass['Mstar']))
-radius = np.array(table['disk_radius'])
-radius = np.append(radius, np.array(intermediate['radius']))
-radius = np.append(radius, np.array(highmass['radius']))
-ratiovradius = spearmanr(np.log10(radius), np.log10(ratio2))
+ratio1 = np.ma.array(table['dust_mass']/table['mass_cen'])
+ratio2 = np.ma.append(ratio1, np.ma.array(intermediate['Mgas']/intermediate['Mstar']))
+ratio2 = np.ma.append(ratio2, np.ma.array(highmass['Mgas']/highmass['Mstar']))
+radius1 = np.ma.array(table['disk_radius'])
+radius2 = np.ma.append(radius1, np.ma.array(intermediate['radius']))
+radius2 = np.ma.append(radius2, np.ma.array(highmass['radius']))
+ratiovradius = spearmanr(np.log10(radius2.compressed()),
+                         np.log10(ratio2.compressed()))
 print((f'All data: {ratiovradius.statistic}'
        f'(p-value = {ratiovradius.pvalue})'))
-#mask = ratio2 > 0.01
-#ratiovradius = spearmanr(np.log10(radius[mask]), np.log10(ratio2[mask]))
-#print((f'Without outliers: {ratiovradius.statistic}'
-#       f'(p-value = {ratiovradius.pvalue})'))
+# Only DIHCA
+dihca_ratiovradius = spearmanr(np.log10(radius1.compressed()),
+                               np.log10(ratio1.compressed()))
+print((f'DIHCA data: {dihca_ratiovradius.statistic}'
+       f'(p-value = {dihca_ratiovradius.pvalue})'))
+
+# Alpha and condensations
+print('alpha vs radius:')
+radius = np.ma.masked_where(alpha.mask, table['disk_radius'])
+alpha_cond = np.ma.masked_where(table['dust_mass'].mask, alpha)
+alphavsradius = spearmanr(alpha_cond.compressed(), radius.compressed())
+print((f'DIHCA data: {alphavsradius.statistic}'
+       f'(p-value = {alphavsradius.pvalue})'))
 
 # Mg/Mc vs distance
 print('Stellar/disk mass vs distance:')
-ratiovdistance = spearmanr(np.array(table['distance']), ratio1)
+ratiovdistance = spearmanr(np.ma.compressed(np.ma.array(table['distance'],
+                                                        mask=ratio1.mask)),
+                           ratio1.compressed())
 print((f'All data: {ratiovdistance.statistic}'
        f'(p-value = {ratiovdistance.pvalue})'))
-#mask = ratio1 > 0.01
-#ratiovdistance = spearmanr(np.array(condensations['distance'])[mask], ratio1[mask])
-#print((f'Without outliers: {ratiovdistance.statistic}'
-#       f'(p-value = {ratiovdistance.pvalue})'))
 
 # High mass populations
-ratio_kstest = ks_2samp(table['disk_mass']/table['mass_cen'],
+ratio_kstest = ks_2samp(table['dust_mass']/table['mass_cen'],
                         highmass['Mgas']/highmass['Mstar'])
 radius_kstest = ks_2samp(table['disk_radius'], highmass['radius'])
 print('KS test for Md/Mc:', ratio_kstest)

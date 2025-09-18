@@ -130,17 +130,14 @@ ax4.set_xlabel(r'$M_c \sin^2 i$ (M$_\odot$)')
 ax4.set_ylabel(r'$L_\star$ (L$_\odot$)', labelpad=-0.1)
 xlim = ax4.get_xlim()
 xval = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
-ms1 = 10**1.47 * xval**1.66
-powerlawplot, = ax4.loglog(xval, ms1, 'b-', label='Fit')
+#ms1 = 10**1.47 * xval**1.66
+ms1 = 10**1.52 * xval**1.62
+powerlawplot, = ax4.loglog(xval, ms1, 'b-', label='Fit $L=33.1M^{1.62}$')
 #ms2 = 10**1.237 * xval**2.726
 #ax4.loglog(xval, ms2, 'm--')
 lum_func = interp1d(zams['m'], 10**zams['logL'], kind='cubic')
 zamsplot, = ax4.loglog(xval, lum_func(xval), 'm--',
                        label='ZAMS')
-#massivedisk, = ax4.loglog(zams['m'], 10**zams['logL'] * (zams['m'] / 1.5), 'c:',
-#                          label='Massive disk')
-#binariesplot, = ax4.loglog(zams['m'],  2 * 10**zams['logL'] * (zams['m'] / 2),
-#                           'o-.', label='Same mass binaries')
 massivedisk, = ax4.loglog(xval, lum_func(xval / 1.5), 'c:',
                           label='Massive disk')
 binariesplot, = ax4.loglog(xval,  2 * lum_func(xval / 2),

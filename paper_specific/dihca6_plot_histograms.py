@@ -13,17 +13,6 @@ figsize = (10, 10)
 summary = RESULTS / 'tables/dihca6_summary.csv'
 summary = Table.read(summary)
 
-# Figure
-#fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=figsize)
-plt.style.use(['paper', 'aspect_auto'])
-#fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
-fig = plt.figure(figsize=figsize)
-ax1 = fig.add_axes((0.08, 0.56, 0.4, 0.4))
-ax2 = fig.add_axes((0.578, 0.56, 0.4, 0.4))
-ax3 = fig.add_axes((0.08, 0.06, 0.4, 0.4))
-ax4 = fig.add_axes((0.578, 0.06, 0.4, 0.4))
-loc = 0.025, 0.92
-
 # Bins alpha
 alpha = np.array(summary['alpha'])
 alpha = np.ma.masked_where(alpha >= 2, alpha)
@@ -39,7 +28,9 @@ bin_edges_radius = np.histogram_bin_edges(radius.compressed(), bins='fd')
 counts_radius, bins_radius = np.histogram(radius.compressed(),
                                           bins=bin_edges_radius)
 median_radius = np.ma.median(radius)
+below200 = np.sum(radius < 200)
 print('Radius median:', median_radius)
+print('Sources below 200 au:', below200, 'out of', np.sum(~radius.mask))
 
 # Bins disk mass
 mass = np.ma.array(summary['dust_mass'])
@@ -47,10 +38,12 @@ bin_edges_mass = np.histogram_bin_edges(mass.compressed(), bins='fd')
 counts_mass, bins_mass = np.histogram(mass.compressed(),
                                       bins=bin_edges_mass)
 median_mass = np.ma.median(mass)
+below5 = np.sum(mass < 5)
 print('Mass median:', median_mass)
+print('Sources below 5 Msun:', below5, 'out of', np.sum(~mass.mask))
 
 # Bins Toomre Q
-toomreq = np.ma.array(summary['toomre_q'])
+toomreq = np.ma.array(summary['toomre_Q'])
 bin_edges_toomreq = np.histogram_bin_edges(toomreq.compressed(), bins='fd')
 counts_toomreq, bins_toomreq = np.histogram(toomreq.compressed(),
                                             bins=bin_edges_toomreq)
@@ -61,6 +54,15 @@ print('Q median:', median_toomreq)
 by_molecule = summary.group_by('molec')
 print(by_molecule.groups.keys)
 #counts_methanol, _ = np.histogram(by_molecule, bins=bin_edges)
+
+# Figure
+plt.style.use(['paper', 'aspect_auto'])
+fig = plt.figure(figsize=figsize)
+ax1 = fig.add_axes((0.08, 0.56, 0.4, 0.4))
+ax2 = fig.add_axes((0.578, 0.56, 0.4, 0.4))
+ax3 = fig.add_axes((0.08, 0.06, 0.4, 0.4))
+ax4 = fig.add_axes((0.578, 0.06, 0.4, 0.4))
+loc = 0.025, 0.92
 
 # Plot alpha
 ax1.hist(bins_alpha[:-1], bins_alpha, weights=counts_alpha, label='Total')
