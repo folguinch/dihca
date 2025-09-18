@@ -562,10 +562,10 @@ def peak_spectrum(src: Source,
                 spectra.mkdir(exist_ok=True)
 
                 # Falgs
-                flags = ['--vlsr', f'{source.vlsr.value}',
-                         f'{source.vlsr.unit}'.replace(' ', ''),
+                flags = ['--vlsr', f'{src.vlsr.value}',
+                         f'{src.vlsr.unit}'.replace(' ', ''),
                          '--radius', '0.05', 'arcsec',
-                         '--coordinate', f'{source.ra}', f'{source.dec}',
+                         '--coordinate', f'{src.ra}', f'{src.dec}',
                          'icrs',
                          '--rest'
                         ]
