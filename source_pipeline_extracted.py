@@ -565,8 +565,8 @@ def peak_spectrum(src: Source,
                 flags = ['--vlsr', f'{src.vlsr.value}',
                          f'{src.vlsr.unit}'.replace(' ', ''),
                          '--radius', '0.05', 'arcsec',
-                         '--coordinate', f"{src_cfg['ra']}", f"{src_cfg['dec']}",
-                         'icrs',
+                         '--coordinate',
+                         f"{src_cfg['ra']} {src_cfg['dec']} icrs",
                          '--rest'
                         ]
                 
