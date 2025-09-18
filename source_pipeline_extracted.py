@@ -568,12 +568,10 @@ def peak_spectrum(src: Source,
                          '--coordinate',
                          f"{src_cfg['ra']} {src_cfg['dec']} icrs",
                          '--rest',
-                         '--outdir', f'spectra'
+                         '--outdir', f'{spectra}'
                         ]
                 if 'rms' in src_cfg:
                     flags += ['--rms'] + src_cfg['rms'].split()
-                else:
-                    flags += ['--rms', '0', 'Jy/beam']
                 
                 spectrum_helper([cube] + flags)
                 processed.append(qns)
@@ -604,6 +602,7 @@ if __name__ == '__main__':
     # Iterate over source config files
     config_dir = CONFIGS / 'extracted'
     for source in sources:
+        print('Source: ', source)
         for config in config_dir.glob(f'{source}*.cfg'):
             # Open source
             src = Source(config_file=config)
