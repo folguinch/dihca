@@ -16,10 +16,10 @@ summary = Table.read(summary)
 # Bins alpha
 alpha = np.array(summary['alpha'])
 alpha = np.ma.masked_where(alpha >= 2, alpha)
-bin_edges_alpha = np.histogram_bin_edges(alpha.compressed(), bins='fd')
-counts_alpha, bins_alpha = np.histogram(alpha.compressed(),
+bin_edges_alpha = np.histogram_bin_edges(-alpha.compressed(), bins='fd')
+counts_alpha, bins_alpha = np.histogram(-alpha.compressed(),
                                         bins=bin_edges_alpha)
-median_alpha = np.ma.median(alpha)
+median_alpha = np.ma.median(-alpha)
 print('Alpha median:', median_alpha)
 
 # Bins radius
@@ -72,7 +72,7 @@ for molec, group in zip(by_molecule.groups.keys, by_molecule.groups):
     if molec['molec'] not in colors:
         continue
     alpha = np.ma.masked_where(group['alpha']>=2, group['alpha'])
-    counts_group, _ = np.histogram(alpha.compressed(), bins=bin_edges_alpha)
+    counts_group, _ = np.histogram(-alpha.compressed(), bins=bin_edges_alpha)
     ax1.hist(bins_alpha[:-1], bins_alpha, weights=counts_group,
              label=molec['molec'].replace('3', '$_3$'),
              color=colors[molec['molec']], alpha=0.6)
@@ -80,7 +80,7 @@ ax1.annotate('(a)', loc, xytext=loc, xycoords='axes fraction')
 #ax1.annotate('(a)', loc, xytext=loc, xycoords='axes fraction')
 ax1.vlines(median_alpha, 0, 12, colors='r', linestyles='--',
            label=f'Median = {median_alpha:.1f}')
-ax1.legend()
+ax1.legend(loc=(0.01, 0.5))
 ax1.set_ylim(0, 12)
 ax1.set_xlabel(r'Index $\alpha$')
 ax1.set_ylabel('Number')
