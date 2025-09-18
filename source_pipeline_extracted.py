@@ -570,6 +570,10 @@ def peak_spectrum(src: Source,
                          '--rest',
                          '--outdir', f'spectra'
                         ]
+                if 'rms' in src_cfg:
+                    flags += ['--rms'] + src_cfg['rms'].split()
+                else:
+                    flags += ['--rms', '0', 'Jy/beam']
                 
                 spectrum_helper([cube] + flags)
                 processed.append(qns)
