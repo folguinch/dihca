@@ -567,7 +567,8 @@ def peak_spectrum(src: Source,
                          '--radius', '0.05', 'arcsec',
                          '--coordinate',
                          f"{src_cfg['ra']} {src_cfg['dec']} icrs",
-                         '--rest'
+                         '--rest',
+                         '--outdir', f'spectra'
                         ]
                 
                 spectrum_helper([cube] + flags)
