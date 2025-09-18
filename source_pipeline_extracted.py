@@ -50,13 +50,13 @@ WITH_LINES_PV = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61', 'G29.96-0.02',
 WITH_K8 = ('G10.62-0.38_alma1a', 'G11.92-0.61_alma1a', 'G333.46-0.16_alma1',
            'IRAS_180891732_alma1', 'IRAS_18182-1433_alma2',
            'IRAS_18182-1433_alma3')
-#SOURCES = SOURCES_970 + SOURCES_490
+SOURCES = SOURCES_970 + SOURCES_490
 #SOURCES = WITH_LINES_PV
 #SOURCES = ('G10.62-0.38', 'NGC_6334_I_N')# 'G35.13-0.74')
 #SOURCES = ('IRAS_181622048',)
 #SOURCES = ('NGC6334I',)
 #SOURCES = WITH_K8
-SOURCES = ('G333.23-0.06_alma3b', )
+#SOURCES = ('G333.23-0.06_alma3b', )
 
 # Source-specific half widths
 HWIDTHS = {
@@ -570,8 +570,7 @@ def peak_spectrum(src: Source,
                          '--rest'
                         ]
                 
-                print(flags)
-                #spectrum_helper([cubes] + flags)
+                spectrum_helper([cube] + flags)
                 processed.append(qns)
 
 if __name__ == '__main__':
