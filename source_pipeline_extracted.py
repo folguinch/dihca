@@ -7,7 +7,7 @@ from astro_source.source import Source
 #from line_little_helper.scripts.cassis_rebuild_map import rebuild_map
 from line_little_helper.auto_subcube import auto_subcube
 from line_little_helper.moving_moments import moving_moments
-#from line_little_helper.scripts.spectrum_helper import spectrum_helper
+from line_little_helper.spectrum_helper import spectrum_helper
 from line_little_helper.line_peak_map import line_peak_map
 from line_little_helper.molecule import NoTransitionError
 from line_little_helper.pvmap_extractor import pvmap_extractor
@@ -23,8 +23,8 @@ from common_paths import RESULTS, CONFIGS, FIGURES
 
 # Molecules to analyze
 #MOLECULES = ('CH3OH',)
-#MOLECULES = ('CH3OH', 'CH3CN',)
-MOLECULES = ('CH3CN',)
+MOLECULES = ('CH3OH', 'CH3CN')
+#MOLECULES = ('CH3CN',)
 #MOLECULES = ('c-HCOOH',)
 #MOLECULES = ('HNCO',)
 #MOLECULES = ('CH2(OD)CHO',)
@@ -163,14 +163,14 @@ LINE_LISTS = {
 LINE_TRANSITIONS = {
     'CH3OH': (#'4(2,3)-5(1,4)A,vt=0',       #spw0
               #'5(4,2)-6(3,3)E,vt=0',
-              #'18(3,15)-17(4,14)A,vt=0',
+              '18(3,15)-17(4,14)A,vt=0',
               #'10(2,9)-9(3,6)A,vt=0',      #spw1
               #'10(2,8)-9(3,7)A,vt=0',
               #'18(3,16)-17(4,13)A,vt=0',
               #'4(-2,3)-3(-1,2)E,vt=0',      #spw2
               #'5(-1,4)-4(-2,3)E,vt=0',
               #'20(-1,19)-20(-0,20)E,vt=0',
-              '8(-0,8)-7(-1,6)E,vt=0',     #spw3
+              #'8(-0,8)-7(-1,6)E,vt=0',     #spw3
               #'23(-5,18)-22(-6,17)E,vt=0',
               #'25(-3,23)-24(-4,20)E,vt=0',
               #'6(1,5)-7(2,6)--,vt=1',      # other
@@ -181,10 +181,11 @@ LINE_TRANSITIONS = {
                   '5(1,5)-4(1,4)++',),
     'CH3CN': (#'12(0)-11(0)',
               #'12(1)-11(1)',
-              '12(2)-11(2)',
+              #'12(2)-11(2)',
               '12(3)-11(3)',
-              '12(4)-11(4)',
-              '12(8)-11(8)'),
+              #'12(4)-11(4)',
+              #'12(8)-11(8)'
+              ),
     'c-HCOOH': ('10(4,6)-9(4,5)',),
     '(13)CH3CN': ('13(3)-12(3)',
                   '13(4)-12(4)'),
@@ -538,6 +539,41 @@ def peak_maps(source,
                     print(f'{mol} ({qns}): not in cube {cube}')
                     continue
 
+def peak_spectrum(src: Source,
+                  hmc: str,
+                  outdir: Path,
+                  array: str,
+                  molecules: Sequence[str] = MOLECULES,
+                  qns_mol: Dict = LINE_TRANSITIONS):
+    """Extract average peak spectrum."""
+    for mol in molecules:
+        # Find what molecules are in the source
+        configs_with_mol = search_molecule(src, mol, array, line_filter=mol)
+        processed = []
+        norm_mol = mol.replace('(', '').replace(')', '')
+        for qns in qns_mol[mol]:
+            if qns in processed:
+                continue
+
+            for src_cfg in configs_with_mol:
+                # Some values
+                cube = src_cfg['file']
+                spectra = outdir / 'spectra'
+                spectra.mkdir(exist_ok=True)
+
+                # Falgs
+                flags = ['--vlsr', f'{source.vlsr.value}',
+                         f'{source.vlsr.unit}'.replace(' ', ''),
+                         '--radius', '0.05', 'arcsec',
+                         '--coordinate', f'{source.ra}', f'{source.dec}',
+                         'icrs',
+                         '--rest'
+                        ]
+                
+                print(flags)
+                #spectrum_helper([cubes] + flags)
+                processed.append(qns)
+
 if __name__ == '__main__':
     # Steps
     steps = {
@@ -545,6 +581,7 @@ if __name__ == '__main__':
         2: moments,
         3: moment1_gradients,
         4: pv_maps,
+        5: peak_spectrum,
     #    2: split_moments,
     #    4: extract_cassis,
     #    5: cassis_to_fits,
@@ -552,7 +589,7 @@ if __name__ == '__main__':
     #    8: line_cube,
     }
     #skip = [3, 4]
-    skip = [1,2,3]
+    skip = [1, 2, 3, 4]
     #skip = [4]
     #skip = []
     array = 'c5c8'
