@@ -568,6 +568,7 @@ def peak_spectrum(src: Source,
                          '--coordinate',
                          f"{src_cfg['ra']} {src_cfg['dec']} icrs",
                          '--rest',
+                         '--vv', 'debug_pipeline.log',
                          '--outdir', f'{spectra}'
                         ]
                 if 'rms' in src_cfg:
