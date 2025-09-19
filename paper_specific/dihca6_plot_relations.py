@@ -128,14 +128,16 @@ dihcaplot4c, = ax4.loglog(mass.data[mask1], lum.data[mask1], 'ro', label='Face-o
 dihcaplot4d, = ax4.loglog(mass.data[mask2], lum.data[mask2], 'c>', label='c-HCOOH & HNCO')
 ax4.set_xlabel(r'$M_c \sin^2 i$ (M$_\odot$)')
 ax4.set_ylabel(r'$L_\star$ (L$_\odot$)', labelpad=-0.1)
-xlim = ax4.get_xlim()
+#xlim = ax4.get_xlim()
+xlim = (2.3, 60.)
 xval = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
 #ms1 = 10**1.47 * xval**1.66
 ms1 = 10**1.52 * xval**1.62
-powerlawplot, = ax4.loglog(xval, ms1, 'b-', label='Fit $L=33.1M^{1.62}$')
+powerlawplot, = ax4.loglog(xval, ms1, 'b-', label=r'$\log L=1.62 \log M + 1.52$')
 #ms2 = 10**1.237 * xval**2.726
 #ax4.loglog(xval, ms2, 'm--')
-lum_func = interp1d(zams['m'], 10**zams['logL'], kind='cubic')
+lum_func = interp1d(zams['m'], 10**zams['logL'], kind='cubic',
+                    bounds_error=False, fill_value='extrapolate')
 zamsplot, = ax4.loglog(xval, lum_func(xval), 'm--',
                        label='ZAMS')
 massivedisk, = ax4.loglog(xval, lum_func(xval / 1.5), 'c:',
@@ -153,3 +155,40 @@ ax4.yaxis.set_major_formatter(tick_formatter('log'))
 
 fig.savefig(FIGURES / 'papers/dihca6_relations.png')
 fig.savefig(FIGURES / 'papers/dihca6_relations.pdf')
+
+# Relation 4 for orignal luminosity
+figsize = (5, 5)
+fig = plt.figure(figsize=figsize)
+ax = fig.add_axes((0.16, 0.12, 0.82, 0.82))
+
+olum = summary['lum']
+olum = np.ma.masked_where(lum.mask, olum)
+dihcaplotaux_a, = ax.loglog(mass, olum, 'bs', label='High-mass DIHCA')
+dihcaplotaux_b, = ax.loglog(mass.data[maskG10], olum.data[maskG10], 'gv', label='G10.62-0.38')
+dihcaplotaux_c, = ax.loglog(mass.data[mask1], olum.data[mask1], 'ro', label='Face-on sources')
+dihcaplotaux_d, = ax.loglog(mass.data[mask2], olum.data[mask2], 'c>', label='c-HCOOH & HNCO')
+ax.set_xlabel(r'$M_c \sin^2 i$ (M$_\odot$)')
+ax.set_ylabel(r'$L_\star$ (L$_\odot$)', labelpad=-0.1)
+#xlim = ax.get_xlim()
+xlim = (2.3, 60.)
+xval = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
+ms1 = 10**1.52 * xval**1.62
+powerlawplot, = ax.loglog(xval, ms1, 'b-', label=r'$\log L=1.62 \log M + 1.52$')
+lum_func = interp1d(zams['m'], 10**zams['logL'], kind='cubic')
+zamsplot, = ax.loglog(xval, lum_func(xval), 'm--',
+                      label='ZAMS')
+massivedisk, = ax.loglog(xval, lum_func(xval / 1.5), 'c:',
+                         label='Massive disk')
+binariesplot, = ax.loglog(xval,  2 * lum_func(xval / 2),
+                          'g-.', label='Same mass binaries')
+ax4.set_ylim(50, 1e6)
+ax.set_xlim(*xlim)
+#ax.annotate('(d)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
+ax.legend(handles=[#dihcaplot4a, dihcaplot4b, dihcaplot4c, dihcaplot4d,
+                    powerlawplot, zamsplot, massivedisk, binariesplot],
+           fontsize='xx-small', loc='lower right')
+ax.xaxis.set_major_formatter(tick_formatter('log'))
+ax.yaxis.set_major_formatter(tick_formatter('log'))
+
+fig.savefig(FIGURES / 'papers/dihca6_relations_aux.png')
+fig.savefig(FIGURES / 'papers/dihca6_relations_aux.pdf')
