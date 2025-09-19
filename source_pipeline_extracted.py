@@ -548,7 +548,7 @@ def peak_spectrum(src: Source,
     """Extract average peak spectrum."""
     for mol in molecules:
         # Find what molecules are in the source
-        configs_with_mol = search_molecule(src, mol, array, line_filter=mol)
+        configs_with_mol = search_molecule(src, mol, array)
         processed = []
         norm_mol = mol.replace('(', '').replace(')', '')
         for qns in qns_mol[mol]:
