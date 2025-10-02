@@ -52,7 +52,7 @@ hmplot1, = ax1.loglog(archive_hm['radius'],
                       archive_hm['Mgas']/archive_hm['Mstar'],
                       'r^',
                       label='High-mass')
-dihcaplot1a, = ax1.loglog(summary['disk_radius'],
+dihcaplot1a, = ax1.loglog(np.ma.masked_where(ratio.mask, summary['disk_radius']),
                           ratio,
                           'bs',
                           label='High-mass DIHCA')
@@ -60,7 +60,7 @@ dihcaplot1b, = ax1.loglog(summary['disk_radius'][maskG10],
                           (summary['dust_mass'] / summary['mass_cen'])[maskG10],
                           'gv',
                           label='G10.62-0.38')
-ax1.set_xlabel('Disk radius (au)')
+ax1.set_xlabel('Radius (au)')
 ax1.set_ylabel(r'$M_g/M_c$')
 ax1.legend(handles=[implot1, hmplot1, dihcaplot1a, dihcaplot1b], fontsize='xx-small')
 ax1.annotate('(a)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
@@ -107,48 +107,42 @@ mask2 = (
 lum = summary['wlum']
 lum = np.ma.masked_where(maskG10 | mask1 | mask2, lum)
 mass = np.ma.array(summary['mass_cen'], mask=lum.mask)
-radius = np.ma.array(summary['disk_radius'], mask=lum.mask)
-dihcaplot3a, = ax3.semilogy(radius, lum/mass, 'bs', label='High-mass DIHCA')
-dihcaplot3b, = ax3.semilogy(summary['disk_radius'][maskG10], lum.data[maskG10]/mass.data[maskG10], 'gv', label='G10.62-0.38')
-dihcaplot3c, = ax3.semilogy(summary['disk_radius'][mask1], lum.data[mask1]/mass.data[mask1], 'ro', label='Face-on sources')
-dihcaplot3d, = ax3.semilogy(summary['disk_radius'][mask2], lum.data[mask2]/mass.data[mask2], 'c>', label='c-HCOOH & HNCO')
-ax3.set_ylabel(r'$L_\star/(M_c \sin^2 i)$ (L$_\odot$/M$_\odot$)',  labelpad=-0.1)
-ax3.set_xlabel('Disk radius (au)')
+#radius = np.ma.array(summary['disk_radius'], mask=lum.mask)
+dustmass = np.ma.array(summary['dust_mass'], mask=lum.mask)
+#dihcaplot3a, = ax3.semilogy(radius, lum/mass, 'bs', label='High-mass DIHCA')
+dihcaplot3a, = ax3.loglog(dustmass, lum/mass, 'bs', label='High-mass DIHCA')
+#dihcaplot3b, = ax3.semilogy(summary['disk_radius'][maskG10], lum.data[maskG10]/mass.data[maskG10], 'gv', label='G10.62-0.38')
+#dihcaplot3c, = ax3.semilogy(summary['disk_radius'][mask1], lum.data[mask1]/mass.data[mask1], 'ro', label='Face-on sources')
+#dihcaplot3d, = ax3.semilogy(summary['disk_radius'][mask2], lum.data[mask2]/mass.data[mask2], 'c>', label='c-HCOOH & HNCO')
+dihcaplot3b, = ax3.loglog(summary['dust_mass'][maskG10], lum.data[maskG10]/mass.data[maskG10], 'gv', label='G10.62-0.38')
+dihcaplot3c, = ax3.loglog(summary['dust_mass'][mask1], lum.data[mask1]/mass.data[mask1], 'ro', label='Face-on sources')
+dihcaplot3d, = ax3.loglog(summary['dust_mass'][mask2], lum.data[mask2]/mass.data[mask2], 'c>', label='c-HCOOH & HNCO')
+ax3.set_ylabel(r'$L_{\rm core}/(M_c \sin^2 i)$ (L$_\odot$/M$_\odot$)',  labelpad=-0.1)
+#ax3.set_xlabel('Disk radius (au)')
+ax3.set_xlabel(r'$M_g$ (M$_\odot$)')
 #ax3.set_ylim(100, 1e6)
 ax3.annotate('(c)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
 ax3.legend(handles=[dihcaplot3a, dihcaplot3b, dihcaplot3c, dihcaplot3d],
-           fontsize='xx-small')
-#ax3.xaxis.set_major_formatter(tick_formatter('log'))
+           fontsize='xx-small', loc=(0.05, 0.7))
+ax3.xaxis.set_major_formatter(tick_formatter('log'))
 ax3.yaxis.set_major_formatter(tick_formatter('log'))
 
 # Relation 4
-dihcaplot4a, = ax4.loglog(mass, lum, 'bs', label='High-mass DIHCA')
-dihcaplot4b, = ax4.loglog(mass.data[maskG10], lum.data[maskG10], 'gv', label='G10.62-0.38')
-dihcaplot4c, = ax4.loglog(mass.data[mask1], lum.data[mask1], 'ro', label='Face-on sources')
-dihcaplot4d, = ax4.loglog(mass.data[mask2], lum.data[mask2], 'c>', label='c-HCOOH & HNCO')
-ax4.set_xlabel(r'$M_c \sin^2 i$ (M$_\odot$)')
-ax4.set_ylabel(r'$L_\star$ (L$_\odot$)', labelpad=-0.1)
+dustmass = np.ma.masked_where(maskG10, summary['dust_mass'])
+diskradius = np.ma.masked_where(maskG10, summary['disk_radius'])
+dihcaplot4a, = ax4.loglog(diskradius, dustmass, 'bs', label='High-mass DIHCA')
+dihcaplot4b, = ax4.loglog(summary['disk_radius'][maskG10], summary['dust_mass'][maskG10],
+                          'gv', label='G10.62-0.38')
+#dihcaplot4c, = ax4.semilogy(mass.data[mask1], lum.data[mask1], 'ro', label='Face-on sources')
+#dihcaplot4d, = ax4.semilogy(mass.data[mask2], lum.data[mask2], 'c>', label='c-HCOOH & HNCO')
+ax4.set_xlabel(r'Radius (au)')
+ax4.set_ylabel(r'$M_g$ (M$_\odot$)', labelpad=-0.1)
 #xlim = ax4.get_xlim()
-xlim = (2.3, 60.)
-xval = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
-#ms1 = 10**1.47 * xval**1.66
-ms1 = 10**1.52 * xval**1.62
-powerlawplot, = ax4.loglog(xval, ms1, 'b-', label=r'$\log L=1.62 \log M + 1.52$')
-#ms2 = 10**1.237 * xval**2.726
-#ax4.loglog(xval, ms2, 'm--')
-lum_func = interp1d(zams['m'], 10**zams['logL'], kind='cubic',
-                    bounds_error=False, fill_value='extrapolate')
-zamsplot, = ax4.loglog(xval, lum_func(xval), 'm--',
-                       label='ZAMS')
-massivedisk, = ax4.loglog(xval, lum_func(xval / 1.5), 'c:',
-                          label='Massive disk')
-binariesplot, = ax4.loglog(xval,  2 * lum_func(xval / 2),
-                           'g-.', label='Same mass binaries')
-ax4.set_ylim(50, 1e6)
-ax4.set_xlim(*xlim)
+#xlim = (2.3, 60.)
+ax4.set_ylim(0.1, 35)
+ax4.set_xlim(30,600)
 ax4.annotate('(d)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
-ax4.legend(handles=[#dihcaplot4a, dihcaplot4b, dihcaplot4c, dihcaplot4d,
-                    powerlawplot, zamsplot, massivedisk, binariesplot],
+ax4.legend(handles=[dihcaplot4a, dihcaplot4b],
            fontsize='xx-small', loc='lower right')
 ax4.xaxis.set_major_formatter(tick_formatter('log'))
 ax4.yaxis.set_major_formatter(tick_formatter('log'))
@@ -156,10 +150,50 @@ ax4.yaxis.set_major_formatter(tick_formatter('log'))
 fig.savefig(FIGURES / 'papers/dihca6_relations.png')
 fig.savefig(FIGURES / 'papers/dihca6_relations.pdf')
 
-# Relation 4 for orignal luminosity
+# Lstar vs Mstar
 figsize = (5, 5)
 fig = plt.figure(figsize=figsize)
 ax = fig.add_axes((0.16, 0.12, 0.82, 0.82))
+
+
+# Lstar vs Mstar for orignal luminosity
+figsize = (5, 5)
+fig = plt.figure(figsize=figsize)
+ax = fig.add_axes((0.16, 0.12, 0.82, 0.82))
+
+dihcaplot4a, = ax.loglog(mass, lum, 'bs', label='High-mass DIHCA')
+dihcaplot4b, = ax.loglog(mass.data[maskG10], lum.data[maskG10], 'gv', label='G10.62-0.38')
+dihcaplot4c, = ax.loglog(mass.data[mask1], lum.data[mask1], 'ro', label='Face-on sources')
+dihcaplot4d, = ax.loglog(mass.data[mask2], lum.data[mask2], 'c>', label='c-HCOOH & HNCO')
+ax.set_xlabel(r'$M_c \sin^2 i$ (M$_\odot$)')
+ax.set_ylabel(r'$L_{\rm core}$ (L$_\odot$)', labelpad=-0.1)
+#xlim = ax4.get_xlim()
+xlim = (2.3, 60.)
+xval = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
+#ms1 = 10**1.47 * xval**1.66
+ms1 = 10**1.52 * xval**1.62
+powerlawplot, = ax.loglog(xval, ms1, 'b-', label=r'$\log L=1.62 \log M + 1.52$')
+#ms2 = 10**1.237 * xval**2.726
+#ax4.loglog(xval, ms2, 'm--')
+lum_func = interp1d(zams['m'], 10**zams['logL'], kind='cubic',
+                    bounds_error=False, fill_value='extrapolate')
+zamsplot, = ax.loglog(xval, lum_func(xval), 'm--',
+                      label='ZAMS')
+massivedisk, = ax.loglog(xval, lum_func(xval / 1.5), 'c:',
+                         label='Massive disk')
+binariesplot, = ax.loglog(xval,  2 * lum_func(xval / 2),
+                          'g-.', label='Same mass binaries')
+ax.set_ylim(50, 1e6)
+ax.set_xlim(*xlim)
+#ax.annotate('(d)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
+ax.legend(handles=[#dihcaplot4a, dihcaplot4b, dihcaplot4c, dihcaplot4d,
+                   powerlawplot, zamsplot, massivedisk, binariesplot],
+          fontsize='xx-small', loc='lower right')
+ax.xaxis.set_major_formatter(tick_formatter('log'))
+ax.yaxis.set_major_formatter(tick_formatter('log'))
+
+fig.savefig(FIGURES / 'papers/dihca6_LM_relation.png')
+fig.savefig(FIGURES / 'papers/dihca6_LM_relation.pdf')
 
 olum = summary['lum']
 olum = np.ma.masked_where(lum.mask, olum)
@@ -168,7 +202,7 @@ dihcaplotaux_b, = ax.loglog(mass.data[maskG10], olum.data[maskG10], 'gv', label=
 dihcaplotaux_c, = ax.loglog(mass.data[mask1], olum.data[mask1], 'ro', label='Face-on sources')
 dihcaplotaux_d, = ax.loglog(mass.data[mask2], olum.data[mask2], 'c>', label='c-HCOOH & HNCO')
 ax.set_xlabel(r'$M_c \sin^2 i$ (M$_\odot$)')
-ax.set_ylabel(r'$L_\star$ (L$_\odot$)', labelpad=-0.1)
+ax.set_ylabel(r'$L_{\rm core}$ (L$_\odot$)', labelpad=-0.1)
 #xlim = ax.get_xlim()
 xlim = (2.3, 60.)
 xval = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
