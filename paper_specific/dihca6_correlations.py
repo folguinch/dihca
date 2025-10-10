@@ -67,7 +67,7 @@ print('-'*80)
 # Lstar/Mstar vs others
 loverm = lum/mass
 mdust = np.ma.array(table['dust_mass'], mask=loverm.mask)
-radius = np.ma.array(table['disk_radius'], mask=loverm.mask)
+radius = np.ma.array(table['disk_radius_dec'], mask=loverm.mask)
 lmvsmdust = spearmanr(np.log10(mdust.compressed()), np.log10(loverm.compressed()))
 lmvsradius = spearmanr(np.log10(radius.compressed()), np.log10(loverm.compressed()))
 print('Valid Points: ', len(loverm.compressed()))
@@ -78,7 +78,7 @@ print((f'L/M vs radius: {lmvsradius.statistic}'
 print('-'*80)
 
 # Mg vs R
-radius = np.ma.masked_where(mask_G10, table['disk_radius'])
+radius = np.ma.masked_where(mask_G10, table['disk_radius_dec'])
 mdust = np.ma.array(table['dust_mass'], mask=radius.mask)
 radiusvsmass = spearmanr(radius.compressed(), mdust.compressed())
 fitter = LinearLSQFitter()
@@ -98,7 +98,7 @@ highmass = Table.read(highmass)
 ratio1 = np.ma.array(table['dust_mass']/table['mass_cen'])
 ratio2 = np.ma.append(ratio1, np.ma.array(intermediate['Mgas']/intermediate['Mstar']))
 ratio2 = np.ma.append(ratio2, np.ma.array(highmass['Mgas']/highmass['Mstar']))
-radius1 = np.ma.array(table['disk_radius'])
+radius1 = np.ma.array(table['disk_radius_dec'])
 radius2 = np.ma.append(radius1, np.ma.array(intermediate['radius']))
 radius2 = np.ma.append(radius2, np.ma.array(highmass['radius']))
 ratiovradius = spearmanr(np.log10(radius2.compressed()),
@@ -125,7 +125,7 @@ print('-'*80)
 
 # Alpha and condensations
 print('alpha vs radius:')
-radius = np.ma.masked_where(alpha.mask, table['disk_radius'])
+radius = np.ma.masked_where(alpha.mask, table['disk_radius_dec'])
 alpha_cond = np.ma.masked_where(table['dust_mass'].mask, alpha)
 alphavsradius = spearmanr(alpha_cond.compressed(), radius.compressed())
 print((f'DIHCA data: {alphavsradius.statistic}'
@@ -144,7 +144,7 @@ print('-'*80)
 # High mass populations
 ratio_kstest = ks_2samp(table['dust_mass']/table['mass_cen'],
                         highmass['Mgas']/highmass['Mstar'])
-radius_kstest = ks_2samp(table['disk_radius'], highmass['radius'])
+radius_kstest = ks_2samp(table['disk_radius_dec'], highmass['radius'])
 print('KS test for Md/Mc:', ratio_kstest)
 print('KS test for Rd:', radius_kstest)
 

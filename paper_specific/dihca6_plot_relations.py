@@ -140,7 +140,7 @@ ax4.set_ylabel(r'$M_g$ (M$_\odot$)', labelpad=-0.1)
 #xlim = ax4.get_xlim()
 #xlim = (2.3, 60.)
 ax4.set_ylim(0.1, 35)
-ax4.set_xlim(30,600)
+ax4.set_xlim(30,500)
 ax4.annotate('(d)', (0.05, 0.95), xytext=(0.05, 0.9), xycoords='axes fraction')
 ax4.legend(handles=[dihcaplot4a, dihcaplot4b],
            fontsize='xx-small', loc='lower right')

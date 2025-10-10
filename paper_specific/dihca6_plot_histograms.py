@@ -23,7 +23,7 @@ median_alpha = np.ma.median(-alpha)
 print('Alpha median:', median_alpha)
 
 # Bins radius
-radius = np.ma.array(summary['disk_radius'])
+radius = np.ma.array(summary['disk_radius_dec'])
 bin_edges_radius = np.histogram_bin_edges(radius.compressed(), bins='fd')
 counts_radius, bins_radius = np.histogram(radius.compressed(),
                                           bins=bin_edges_radius)
@@ -88,7 +88,7 @@ ax1.set_ylabel('Number')
 ax2.hist(bins_mass[:-1], bins_mass, weights=counts_mass)
 ax2.annotate('(b)', loc, xytext=loc, xycoords='axes fraction')
 ax2.vlines(median_mass, 0, 18, colors='r', linestyles='--',
-           label=f'Median = {median_mass:.1f} M$_\odot$')
+           label=f'Median = {median_mass:.1f} ' + r'M$_\odot$')
 ax2.legend()
 ax2.set_ylim(0, 18)
 ax2.set_xlabel(r'Condensation mass (M$_\odot$)')
@@ -96,10 +96,10 @@ ax2.set_ylabel('Number')
 
 ax3.hist(bins_radius[:-1], bins_radius, weights=counts_radius)
 ax3.annotate('(c)', loc, xytext=loc, xycoords='axes fraction')
-ax3.vlines(median_radius, 0, 12, colors='r', linestyles='--',
+ax3.vlines(median_radius, 0, 16, colors='r', linestyles='--',
            label=f'Median = {median_radius:.0f} au')
 ax3.legend()
-ax3.set_ylim(0, 12)
+ax3.set_ylim(0, 16)
 ax3.set_xlabel('Condensation radius (au)')
 ax3.set_ylabel('Number')
 
