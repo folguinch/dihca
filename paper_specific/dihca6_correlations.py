@@ -1,4 +1,8 @@
-"""DIHCA VI: Spearman coeficient for different relations"""
+"""DIHCA VI: Spearman coeficient for different relations.
+
+An improved and up to date version of these correlations is in
+`dihca6_param_correlations.py`.
+"""
 from astropy.modeling.models import Linear1D
 from astropy.modeling.fitting import LinearLSQFitter
 from astropy.table import Table

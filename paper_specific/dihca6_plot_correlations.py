@@ -12,11 +12,9 @@ import numpy as np
 
 from common_paths import RESULTS, FIGURES
 from utils import round_to_significant_figures
-from dihca6_load_tables import load_summary
+from dihca6_load_tables import load_summary, MASS, RADIUS
 
 figsize = (6, 5)
-#summary = RESULTS / 'tables/dihca6_summary.csv'
-#summary = Table.read(summary)
 
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw=None, cbarlabel="", **kwargs):
@@ -79,7 +77,6 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
     return im, cbar
 
-
 def annotate_heatmap(im, pval, data=None, valfmt="{x:.2f}",
                      textcolors=("black", "white"),
                      threshold=0.39, **textkw):
@@ -139,35 +136,12 @@ def annotate_heatmap(im, pval, data=None, valfmt="{x:.2f}",
 
     return texts
 
-#Mask G10 
-#mask_G10 = summary['Source'] == 'G10.62-0.38'
-#mask_outliers = summary['alpha'] >= 2
-#mask_faceon = (((summary['Source'] == 'G335.579-0.272') &
-#                (summary['ALMA'] == '1')) |
-#               (summary['Source'] == 'G35.20-0.74 N'))
-#mask_mols = (
-#    (summary['molec'] != 'CH3CN') &
-#    (summary['molec'] != 'CH3OH')
-#)
-#mask_radius = (((summary['Source'] == 'G333.23-0.06') &
-#                (summary['ALMAe'] == 14)) |
-#               ((summary['Source'] == 'G35.03+0.35 A') &
-#                (summary['ALMAe'] == 1)))
-
 # Select columns
-cols = ['distance', 'alpha', 'mass_cen', 'dust_mass_corr', 'disk_radius_dec']
+cols = ['distance', 'alpha', 'mass_cen', MASS, RADIUS]
 names = ['$d$', r'$\alpha$', r'$M_c \sin^2 i$', '$M_g$', '$R$']
 selected = load_summary(masked=True, selected=cols)
-#selected = Table(summary[cols], masked=True)
-
-# Masking
-#selected['alpha'].mask = mask_outliers
-#selected['mass_cen'].mask = mask_outliers | mask_faceon | mask_mols
-#selected['dust_mass_corr'].mask = mask_G10
-#selected['disk_radius_dec'].mask = mask_radius
 
 # Correlations
-#corr = spearmanr(selected, nan_policy='omit')
 nvals = len(cols)
 corr, pval = np.ones((nvals, nvals)), np.ones((nvals, nvals))
 for i, j in product(range(nvals), range(nvals)):

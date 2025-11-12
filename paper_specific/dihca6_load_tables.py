@@ -4,6 +4,8 @@ from astropy.table import Table
 from common_paths import RESULTS
 
 SUMMARY = RESULTS / 'tables/dihca6_summary.csv'
+MASS = 'dust_mass_corr'
+RADIUS = 'disk_radius_dec' 
 
 def get_masks(table):
     mask_G10 = table['Source'] == 'G10.62-0.38'
@@ -25,10 +27,13 @@ def get_masks_bycols(table):
     G10, outliers, faceon, mols, radius = get_masks(table)
     masks = {
         'alpha': outliers,
-        'mass_cen': outliers | faceon | mols,
+        'mass_cen': faceon | mols,
         'dust_mass': G10,
         'dust_mass_corr': G10,
         'disk_radius_dec': radius,
+        'lum': G10,
+        'wlum': G10,
+        'toomre_Q': G10 | radius | faceon | mols,
     }
 
     return masks
