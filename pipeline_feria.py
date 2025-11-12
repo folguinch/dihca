@@ -11,38 +11,40 @@ from line_little_helper.molecule import Molecule
 
 from common_paths import RESULTS, CONFIGS
 from source_pipeline_extracted import SAVED_MOLS
-from feria_mcmc import log_posterior, Observation, Model
+from feria_mcmc import log_posterior_cube, ObsFit, Model, log_posterior_pv
 
-MOLECULE = 'CH3OH'
-TRANSITION = '18(3,15)-17(4,14)A,vt=0'
+#MOLECULE = 'CH3OH'
+#TRANSITION = '18(3,15)-17(4,14)A,vt=0'
 SOURCES = {
     'G335.579-0.272': ('alma3',),
 }
-SECTIONS = {
-    'CH3OH': ('b6_c5c8_spw0_1000_CH3OH_18_3_15_-17_4_14_A_vt_0',
-              'CH3OH_spw0'),
-}
+#SECTIONS = {
+#    'CH3OH': ('b6_c5c8_spw0_1000_CH3OH_18_3_15_-17_4_14_A_vt_0',
+#              'CH3OH_spw0'),
+#}
+NCORE = 10
 NWALKERS, NSTEPS, NBURN = 120, 250, 180
-NCORE = 1
+#NCORE = 1
 #NWALKERS, NSTEPS, NBURN = 15, 30, 10
-#NCORE = 10
+CUBE_FIT = False
 
-FIXED_PARAMS = {
-    'rot': -1,
-    #'rin': 'CB',
-    'ireheight': 0.,
-    'ireflare': 30,
-    'irenprof': -1.5,
-    'iretprof': -0.4,
-    'kepheight': 0.5,
-    'kepflare': 30,
-    'kepnprof': -1.5,
-    'keptprof': -0.4,
-    'cbdens': 1e-2,
-    'cbtemp': 50,
-    'pvra': 0.0,
-    'pvdec': 0.0,
-}
+#FIXED_PARAMS = {
+#    'rot': -1,
+#    'rin': 'CB',
+#    #'vsys': -48.8,
+#    'ireheight': 0.,
+#    'ireflare': 30,
+#    'irenprof': -1.5,
+#    'iretprof': -0.4,
+#    'kepheight': 0.5,
+#    'kepflare': 30,
+#    'kepnprof': -1.5,
+#    'keptprof': -0.4,
+#    'cbdens': 1e-2,
+#    'cbtemp': 50,
+#    'pvra': 0.0,
+#    'pvdec': 0.0,
+#}
 #PARAMS = {
 #    'vsys': 0,
 #    'mass': 10,
@@ -52,15 +54,15 @@ FIXED_PARAMS = {
 #    'rout': 1000,
 #    'lw': 2.0,
 #}
-RANGES = {
-    'vsys': (-2, 2),
-    'mass': (3, 40),
-    'rcb': (50, 1000),
-    'rin': (10, 100),
-    'incl': (0, 180),
-    'rout': (500, 5000),
-    'lw': (1., 10.0),
-}
+#RANGES = {
+#    #'vsys': (-2, 2),
+#    'mass': (3, 40),
+#    'rcb': (10, 1000),
+#    #'rin': (10, 100),
+#    'incl': (-90, 90),
+#    'rout': (500, 5000),
+#    'lw': (0.1, 3.0),
+#}
 LABELS = {
     'vsys': r'$\Delta v_{\rm sys}$ (km/s)',
     'mass': r'$M_{c}$ ($M_\odot$)',
@@ -119,15 +121,15 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
                         'obs': obs,
                         'outdir': out_iter}
     with Pool(ncore) as pool:
-       sampler = emcee.EnsembleSampler(
-           nwalkers,
-           len(params_ranges),
-           log_posterior,
-           kwargs=posterior_kwargs,
-           pool=pool,
-           parameter_names=list(params_ranges.keys()),
-       )
-       sampler.run_mcmc(guesses, nsteps, progress=True)
+        sampler = emcee.EnsembleSampler(
+            nwalkers,
+            len(params_ranges),
+            log_posterior_cube if CUBE_FIT else log_posterior_pv,
+            kwargs=posterior_kwargs,
+            pool=pool,
+            parameter_names=list(params_ranges.keys()),
+            )
+        sampler.run_mcmc(guesses, nsteps, progress=True)
     
     # Plots
     show_walkers(sampler, params_ranges, outdir)
@@ -157,30 +159,36 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
 
 if __name__ == '__main__':
     # Set config sections
-    section_src, section_pv = SECTIONS[MOLECULE]
+    #section_src, section_pv = SECTIONS[MOLECULE]
 
     # Load molecule information
-    molecule = Molecule.from_json(SAVED_MOLS[MOLECULE])
-    restfreq = molecule.transition_info(TRANSITION).restfreq
+    #molecule = Molecule.from_json(SAVED_MOLS[MOLECULE])
+    #restfreq = molecule.transition_info(TRANSITION).restfreq
 
     for src, hmcs in SOURCES.items():
         for hmc in hmcs:
-            # Open pv config
-            pvconfig_file = CONFIGS / f'extracted/pvmaps/{src}_{hmc}_rotation.cfg'
-            pvconfig = ConfigParser()
-            pvconfig.read(pvconfig_file)
-
-            # Create observation
-            config_file = CONFIGS / f'extracted/{src}_{hmc}.cfg'
-            obs = Observation(config_file, section_src, MOLECULE, restfreq)
-
-            # Parameter ranges
-            pa = pvconfig.getfloat(section_pv, 'disk_pa')
-            params_ranges = RANGES | {'pa': (pa - 20, pa + 20)}
-            params_fixed = FIXED_PARAMS | {'pvpa': pa}
-
-            # Run MCMC
+            # Create results directory
             outdir = RESULTS / src / f'c5c8/per_hot_core/{hmc}_feria_mcmc'
             outdir.mkdir(parents=False, exist_ok=True)
+
+            # Open pv config
+            #pvconfig_file = CONFIGS / f'extracted/pvmaps/{src}_{hmc}_rotation.cfg'
+            #pvconfig = ConfigParser()
+            #pvconfig.read(pvconfig_file)
+
+            # Create observation
+            config_file = CONFIGS / f'feria_fit/{src}_{hmc}.cfg'
+            #obs = Observation(config_file, section_src, MOLECULE, restfreq,
+            #                  outdir)
+            obs = ObsFit(config_file, outdir)
+
+            # Parameter ranges
+            #pa = pvconfig.getfloat(section_pv, 'disk_pa')
+            #params_ranges = RANGES | {'pa': (pa - 50, pa + 50)}
+            #params_fixed = FIXED_PARAMS | {'pvpa': pa}
+            params_ranges = obs.get_param_ranges()
+            params_fixed = obs.get_fixed_params()
+
+            # Run MCMC
             calc_mcmc(params_ranges, params_fixed, obs, outdir)
 
