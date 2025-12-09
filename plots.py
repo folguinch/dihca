@@ -6,7 +6,7 @@ from tile_plotter.plotter import plotter
 
 from common_paths import CONFIGS, FIGURES
 
-SKIP = [1, 3, 5]
+SKIP = [1, 2, 3, 5]
 PLOT_TYPE = 'papers'
 #PLOT_TYPE = 'posters'
 STEPS = {
@@ -16,7 +16,8 @@ STEPS = {
     4: 'pv_maps',
     5: 'streamers'
 }
-BY_GROUP = True
+BY_GROUP = False
+FIGSETS = True
 
 def by_source(sources, config_dir, skip, flags, filters=None):
     # Iterate over sources
@@ -51,6 +52,19 @@ def by_group(config_dir, skip, flags):
             continue
         basename = f'group_{group}.*.cfg'
         plot_dir = FIGURES / f'group_{group}' / PLOT_TYPE
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        for config in config_dir.glob(basename):
+            print(f'Plotting {config}')
+            plotname = plot_dir / config.with_suffix('.png').name
+            plotter([f'{config}', f'{plotname}'] + flags)
+            print('=' * 100)
+
+def by_figset(config_dir, skip, flags):
+    for key, group in STEPS.items():
+        if key in skip:
+            continue
+        basename = f'*{group}.*.cfg'
+        plot_dir = FIGURES / 'figsets' / PLOT_TYPE / group
         plot_dir.mkdir(parents=True, exist_ok=True)
         for config in config_dir.glob(basename):
             print(f'Plotting {config}')
@@ -97,6 +111,9 @@ if __name__ == '__main__':
             by_config(Path(config), flags)
     elif BY_GROUP:
         by_group(config_dir, skip, flags)
+    elif FIGSETS:
+        print('Plotting figure sets')
+        by_figset(config_dir / 'figsets', skip, flags)
     elif len(sources) > 0:
         by_source(sources, config_dir, skip, flags, filters=filters)
     else:
