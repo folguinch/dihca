@@ -63,7 +63,7 @@ def by_figset(config_dir, skip, flags):
     for key, group in STEPS.items():
         if key in skip:
             continue
-        basename = f'*{group}.*.cfg'
+        basename = f'*{group}*.*.cfg'
         plot_dir = FIGURES / 'figsets' / PLOT_TYPE / group
         plot_dir.mkdir(parents=True, exist_ok=True)
         for config in config_dir.glob(basename):
