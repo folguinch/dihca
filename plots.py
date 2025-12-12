@@ -16,8 +16,8 @@ STEPS = {
     4: 'pv_maps',
     5: 'streamers'
 }
-BY_GROUP = True
-FIGSETS = False
+BY_GROUP = False
+FIGSETS = True
 
 def by_source(sources, config_dir, skip, flags, filters=None):
     # Iterate over sources
