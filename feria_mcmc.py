@@ -20,6 +20,7 @@ from scipy.interpolate import LinearNDInterpolator
 from scipy.ndimage import binary_dilation
 #from scipy.spatial import QhullError
 from spectral_cube import SpectralCube
+from toolkit.astro_tools.masking import proportional_dilation
 from toolkit.converters import array_to_hdu
 import astropy.units as u
 import numpy as np
@@ -114,8 +115,9 @@ class ObsFit:
 
     def get_cube_pars(self,
                       outdir: Path,
-                      nsigma: float = 5,
-                      dilate: int = 10) -> Tuple[Dict]:
+                      nsigma: float = 5
+                      #dilate: int = 10
+                      ) -> Tuple[Dict]:
         # Import cube to CASA format
         cube_path = Path(self.config['data']['cube'])
         imagename = outdir / cube_path.with_suffix('.image').name
@@ -141,10 +143,11 @@ class ObsFit:
         rms = self.config['data']['cube_rms'].split()
         rms = float(rms[0]) * u.Unit(rms[1])
         nsigma = self.config.getfloat('data', 'cube_nsigma', fallback=nsigma)
-        dilate = self.config.getint('data', 'cube_dilate', fallback=dilate)
+        #dilate = self.config.getint('data', 'cube_dilate', fallback=dilate)
         data = cube.unmasked_data[:,:,:]
         mask = data >= nsigma * rms
-        mask = binary_dilation(mask, iterations=dilate)
+        # Proportional dilate
+        mask, dilate = proportional_dilation(mask)
         data = np.ma.array(data.value, mask=~mask)
         data = np.ma.masked_invalid(data)
 
@@ -222,14 +225,16 @@ class ObsFit:
         # PV rms
         rms = u.Quantity(self.config['data']['pv_rms'])
         nsigma = self.config.getfloat('data', 'pv_nsigma ', fallback=3)
-        dilate = self.config.getfloat('data', 'pv_nsigma ', fallback=5)
+        #dilate = self.config.getfloat('data', 'pv_nsigma ', fallback=5)
         rms = rms.to(bunit)
 
         # Masks
         mask_disk = pv_disk.data * bunit >= nsigma * rms
         mask_out = pv_out.data * bunit >= nsigma * rms
-        mask_disk = binary_dilation(mask_disk, iterations=dilate)
-        mask_out = binary_dilation(mask_out, iterations=dilate)
+        #mask_disk = binary_dilation(mask_disk, iterations=dilate)
+        #mask_out = binary_dilation(mask_out, iterations=dilate)
+        mask_disk, dilate_disk = proportional_dilation(mask_disk)
+        mask_out, dilate_out = proportional_dilation(mask_out)
 
         # Store data
         data_disk = {
