@@ -6,7 +6,7 @@ from tile_plotter.plotter import plotter
 
 from common_paths import CONFIGS, FIGURES
 
-SKIP = [1, 4, 3, 5]
+SKIP = [1, 2, 3, 5]
 PLOT_TYPE = 'papers'
 #PLOT_TYPE = 'posters'
 STEPS = {
