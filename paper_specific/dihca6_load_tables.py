@@ -18,7 +18,7 @@ def get_masks(table):
         (table['molec'] != 'CH3OH')
     )
     mask_radius = (((table['Source'] == 'G333.23-0.06') &
-                    (table['ALMAe'] == 14)) |
+                    (table['ALMAe'] == 17)) |
                    ((table['Source'] == 'G35.03+0.35 A') &
                     (table['ALMAe'] == 1)))
     return mask_G10, mask_outliers, mask_faceon, mask_mols, mask_radius
