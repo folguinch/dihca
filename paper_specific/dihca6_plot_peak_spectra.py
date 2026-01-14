@@ -146,6 +146,12 @@ for field, val in sources.items():
         else:
             ax.set_ylim(bottom=-5)
             ax.annotate(molec, (.6, 0.9), xytext=(.6,.9), xycoords='axes fraction')
+        if field == 'G11.92-0.61' and alma == '3':
+            aux_ind = (vel > -10*u.km/u.s) & (vel < 10*u.km/u.s)
+            print(vel[aux_ind])
+            print(temp_mb[aux_ind])
+            print(np.nanmax(temp_mb[aux_ind]))
+
         ax.axvline(x=dvlsr)
         ax.set_title(f'{norm_field} ALMAe{almae}', fontsize=13)
 

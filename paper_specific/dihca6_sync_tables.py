@@ -166,7 +166,7 @@ qtable.write(qtab_name, format='ascii.ecsv', overwrite=True)
 
 # Build latex table
 ltable = Table()
-cols = ['ALMAe', 'temp', 'wlum', 'flux', 'peak_int', 'op_depth_peak', 
+cols = ['Source', 'ALMAe', 'temp', 'wlum', 'flux', 'peak_int', 'op_depth_peak', 
         RADIUS, MASS, 'surface_den', 'toomre_Q']
 for col in cols:
     ltable[col] = table[col]

@@ -150,6 +150,7 @@ for i, j in product(range(nvals), range(nvals)):
     mask = selected[cols[i]].mask | selected[cols[j]].mask
     col1 = np.ma.masked_where(mask, selected[cols[i]])
     col2 = np.ma.masked_where(mask, selected[cols[j]])
+    print(cols[i], cols[j], len(col1.compressed()))
     corr[i, j], pval[i, j] = spearmanr(col1.compressed(), col2.compressed())
 
 # Plot
