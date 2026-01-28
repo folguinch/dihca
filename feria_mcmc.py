@@ -233,8 +233,20 @@ class ObsFit:
         mask_out = pv_out.data * bunit >= nsigma * rms
         #mask_disk = binary_dilation(mask_disk, iterations=dilate)
         #mask_out = binary_dilation(mask_out, iterations=dilate)
-        mask_disk, dilate_disk = proportional_dilation(mask_disk)
-        mask_out, dilate_out = proportional_dilation(mask_out)
+        mask_disk, dilate_disk = proportional_dilation(mask_disk, fraction=2)
+        mask_out, dilate_out = proportional_dilation(mask_out, fraction=2)
+
+        # Save mask
+        maskfile = pv_disk_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_disk}.mask.fits')
+        if not maskfile.exists():
+            hdu = fits.PrimaryHDU(data=mask_disk.astype(int),
+                                  header=pv_disk.header)
+            hdu.writeto(maskfile)
+        maskfile = pv_out_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_out}.mask.fits')
+        if not maskfile.exists():
+            hdu = fits.PrimaryHDU(data=mask_out.astype(int),
+                                  header=pv_out.header)
+            hdu.writeto(maskfile)
 
         # Store data
         data_disk = {
@@ -419,79 +431,81 @@ def log_posterior_pv(params: Dict, **kwargs):
         #model_cube = SpectralCube.read(model_cube_name)
         #model_cube = model_cube.with_spectral_unit(u.km/u.s,
         #                                           velocity_convention='radio')
+        model_pv_disk, model_pv_out, model_max = pv_products(model_cube_name,
+                                                             obs)
 
-        # Convert to CASA
-        cube_name = model_cube_name.with_suffix('.image')
-        importfits(fitsimage=f'{model_cube_name}', imagename=f'{cube_name}',
-                   overwrite=True)
-            
-        # Regrid cube
-        template = obs.data['cube']['imagename']
-        cube_regrid = cube_name.with_suffix('.interp.image')
-        imregrid(f'{cube_name}', template=f"{template}",
-                 output=f'{cube_regrid}', asvelocity=True, overwrite=True)
-        model_cube = SpectralCube.read(cube_regrid)
-        model_cube = model_cube.with_spectral_unit(u.km/u.s,
-                                                   velocity_convention='radio')
-        
-        # Get pv maps from cube
-        length = u.Quantity(obs.config.get('data', 'pv_length'))
-        width = u.Quantity(obs.config.get('data', 'pv_width'))
-        angle_disk = u.Quantity(obs.config.get('info', 'pa_disk'))
-        angle_out = u.Quantity(obs.config.get('info', 'pa_out'))
-        model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
-                                            length, width, angle_disk,
-                                            recenter=True)
-        model_pv_disk.data[np.isnan(model_pv_disk.data)] = 0.
-        #model_pv_disk.data[obs.data['pv_disk']['data'].mask] = 0.
-        #model_pv_disk.writeto(model_cube_name.with_suffix('.regrid.pv_disk.fits'))
-        model_pv_out = get_pvmap_from_slit(model_cube, obs.position,
-                                           length, width, angle_out,
-                                           recenter=True)
-        model_pv_out.data[np.isnan(model_pv_out.data)] = 0.
-        #model_pv_out.data[obs.data['pv_out']['data'].mask] = 0.
-        #model_pv_out.writeto(model_cube_name.with_suffix('.regrid.pv_out.fits'))
-
-        # Get max map
-        model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
-        model_max = np.ma.fix_invalid(model_max, fill_value=0.0).data
-        #hdu = fits.PrimaryHDU(data=model_max,
-        #                      header=model_cube.wcs.sub(2).to_header())
-        #hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
-
+        ## Convert to CASA
+        #cube_name = model_cube_name.with_suffix('.image')
+        #importfits(fitsimage=f'{model_cube_name}', imagename=f'{cube_name}',
+        #           overwrite=True)
+        #    
+        ## Regrid cube
+        #template = obs.data['cube']['imagename']
+        #cube_regrid = cube_name.with_suffix('.interp.image')
+        #imregrid(f'{cube_name}', template=f"{template}",
+        #         output=f'{cube_regrid}', asvelocity=True, overwrite=True)
+        #model_cube = SpectralCube.read(cube_regrid)
+        #model_cube = model_cube.with_spectral_unit(u.km/u.s,
+        #                                           velocity_convention='radio')
+        #
+        ## Get pv maps from cube
+        #length = u.Quantity(obs.config.get('data', 'pv_length'))
+        #width = u.Quantity(obs.config.get('data', 'pv_width'))
+        #angle_disk = u.Quantity(obs.config.get('info', 'pa_disk'))
+        #angle_out = u.Quantity(obs.config.get('info', 'pa_out'))
         #model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
         #                                    length, width, angle_disk,
         #                                    recenter=True)
-        #model_pv_disk.writeto(model_cube_name.with_suffix('.pv_disk.fits'))
+        #model_pv_disk.data[np.isnan(model_pv_disk.data)] = 0.
+        ##model_pv_disk.data[obs.data['pv_disk']['data'].mask] = 0.
+        ##model_pv_disk.writeto(model_cube_name.with_suffix('.regrid.pv_disk.fits'))
+        #model_pv_out = get_pvmap_from_slit(model_cube, obs.position,
+        #                                   length, width, angle_out,
+        #                                   recenter=True)
+        #model_pv_out.data[np.isnan(model_pv_out.data)] = 0.
+        ##model_pv_out.data[obs.data['pv_out']['data'].mask] = 0.
+        ##model_pv_out.writeto(model_cube_name.with_suffix('.regrid.pv_out.fits'))
 
-        ## Max map
-        #model_max_map = model_cube.max(axis=0)
-        #model_max_map = array_to_hdu(model_max_map, model_cube)
+        ## Get max map
+        #model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
+        #model_max = np.ma.fix_invalid(model_max, fill_value=0.0).data
+        ##hdu = fits.PrimaryHDU(data=model_max,
+        ##                      header=model_cube.wcs.sub(2).to_header())
+        ##hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
 
-        ## Interpolate disk pv
-        #xval, yval = imtools.get_coord_axes(model_pv_disk)
-        #print(xval, yval)
-        #xunit, yunit = xval.unit, yval.unit
-        #xval, yval = np.meshgrid(xval.value, yval.value)
-        #interp = LinearNDInterpolator(list(zip(xval.flatten(), yval.flatten())),
-        #                              model_pv_disk.data.flatten())
+        ##model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
+        ##                                    length, width, angle_disk,
+        ##                                    recenter=True)
+        ##model_pv_disk.writeto(model_cube_name.with_suffix('.pv_disk.fits'))
 
-        ## Evaluate
-        #new_xval, new_yval = np.meshgrid(*obs.data['pv_disk']['axes'])
-        #print(new_xval, new_yval)
-        #if new_xval.unit.is_equivalent(xunit):
-        #    new_xval = new_xval.to(xunit).value
-        #else:
-        #    raise ValueError
-        #if new_yval.unit.is_equivalent(yunit):
-        #    new_yval = new_yval.to(yunit).value
-        #else:
-        #    ValueError
-        #model_pv_disk = interp(new_xval, new_yval)
-        #model_pv_disk = model_pv_disk / np.nanmax(model_pv_disk)
-        #hdu = fits.PrimaryHDU(data=model_pv_disk,
-        #                      header=obs.data['pv_disk']['pv_header'])
-        #hdu.writeto(model_cube_name.with_suffix('.interp.norm.pv_disk.fits'))
+        ### Max map
+        ##model_max_map = model_cube.max(axis=0)
+        ##model_max_map = array_to_hdu(model_max_map, model_cube)
+
+        ### Interpolate disk pv
+        ##xval, yval = imtools.get_coord_axes(model_pv_disk)
+        ##print(xval, yval)
+        ##xunit, yunit = xval.unit, yval.unit
+        ##xval, yval = np.meshgrid(xval.value, yval.value)
+        ##interp = LinearNDInterpolator(list(zip(xval.flatten(), yval.flatten())),
+        ##                              model_pv_disk.data.flatten())
+
+        ### Evaluate
+        ##new_xval, new_yval = np.meshgrid(*obs.data['pv_disk']['axes'])
+        ##print(new_xval, new_yval)
+        ##if new_xval.unit.is_equivalent(xunit):
+        ##    new_xval = new_xval.to(xunit).value
+        ##else:
+        ##    raise ValueError
+        ##if new_yval.unit.is_equivalent(yunit):
+        ##    new_yval = new_yval.to(yunit).value
+        ##else:
+        ##    ValueError
+        ##model_pv_disk = interp(new_xval, new_yval)
+        ##model_pv_disk = model_pv_disk / np.nanmax(model_pv_disk)
+        ##hdu = fits.PrimaryHDU(data=model_pv_disk,
+        ##                      header=obs.data['pv_disk']['pv_header'])
+        ##hdu.writeto(model_cube_name.with_suffix('.interp.norm.pv_disk.fits'))
 
         # Chi
         sigma_disk = np.repeat(obs.data['pv_disk']['rms'],
@@ -542,6 +556,54 @@ def log_posterior_pv(params: Dict, **kwargs):
                           model_dir, list(kwargs['fixed_params'].keys()))
     else:
         return -np.inf
+
+def pv_products(model_cube_name: Path,
+                obs: ObsFit,
+                save_products: bool = False):
+    """Generate products from model."""
+    # Convert to CASA
+    cube_name = model_cube_name.with_suffix('.image')
+    importfits(fitsimage=f'{model_cube_name}', imagename=f'{cube_name}',
+               overwrite=True)
+            
+    # Regrid cube
+    template = obs.data['cube']['imagename']
+    cube_regrid = cube_name.with_suffix('.interp.image')
+    imregrid(f'{cube_name}', template=f"{template}",
+             output=f'{cube_regrid}', asvelocity=True, overwrite=True)
+    model_cube = SpectralCube.read(cube_regrid)
+    model_cube = model_cube.with_spectral_unit(u.km/u.s,
+                                               velocity_convention='radio')
+        
+    # Get pv maps from cube
+    length = u.Quantity(obs.config.get('data', 'pv_length'))
+    width = u.Quantity(obs.config.get('data', 'pv_width'))
+    angle_disk = u.Quantity(obs.config.get('info', 'pa_disk'))
+    angle_out = u.Quantity(obs.config.get('info', 'pa_out'))
+    if save_products:
+        filename_disk = model_cube_name.with_suffix('.regrid.pv_disk.fits')
+        filename_out = model_cube_name.with_suffix('.regrid.pv_out.fits')
+    else:
+        filename_disk = None
+        filename_out = None
+    model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
+                                        length, width, angle_disk,
+                                        recenter=True, filename=filename_disk)
+    model_pv_disk.data[np.isnan(model_pv_disk.data)] = 0.
+    model_pv_out = get_pvmap_from_slit(model_cube, obs.position,
+                                       length, width, angle_out,
+                                       recenter=True, filename=filename_out)
+    model_pv_out.data[np.isnan(model_pv_out.data)] = 0.
+
+    # Get max map
+    model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
+    model_max = np.ma.fix_invalid(model_max, fill_value=0.0).data
+    if save_products:
+        hdu = fits.PrimaryHDU(data=model_max,
+                              header=model_cube.wcs.sub(2).to_header())
+        hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
+
+    return model_pv_disk, model_pv_out, model_max
 
 #basedir = Path('./')
 #fname_cubein = Path('./feria.in')

@@ -11,19 +11,21 @@ from line_little_helper.molecule import Molecule
 
 from common_paths import RESULTS, CONFIGS
 from source_pipeline_extracted import SAVED_MOLS
-from feria_mcmc import log_posterior_cube, ObsFit, Model, log_posterior_pv
+from feria_mcmc import log_posterior_cube, ObsFit, Model, log_posterior_pv, pv_products
 
 #MOLECULE = 'CH3OH'
 #TRANSITION = '18(3,15)-17(4,14)A,vt=0'
 SOURCES = {
-    'G335.579-0.272': ('alma3',),
+    #'G335.579-0.272': ('almae4',),
+    'G35.20-0.74_N': ('almae1',),
+    'NGC_6334_I_N': ('almae8',),
 }
 #SECTIONS = {
 #    'CH3OH': ('b6_c5c8_spw0_1000_CH3OH_18_3_15_-17_4_14_A_vt_0',
 #              'CH3OH_spw0'),
 #}
 NCORE = 10
-NWALKERS, NSTEPS, NBURN = 120, 250, 180
+NWALKERS, NSTEPS, NBURN = 200, 250, 180
 #NCORE = 1
 #NWALKERS, NSTEPS, NBURN = 15, 30, 10
 CUBE_FIT = False
@@ -151,6 +153,7 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
     best_model = Model(list(params_fixed.keys()),
                        **(final_params | params_fixed))
     best_model_cube = best_model(outdir, obs)
+    _ = pv_products(best_model_cube, obs, save_products=True)
     end = datetime.datetime.now()
 
     print(start)
