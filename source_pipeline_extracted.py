@@ -23,11 +23,12 @@ from common_paths import RESULTS, CONFIGS, FIGURES
 
 # Molecules to analyze
 #MOLECULES = ('CH3OH',)
-MOLECULES = ('CH3OH', 'CH3CN')
+#MOLECULES = ('CH3OH', 'CH3CN')
 #MOLECULES = ('CH3CN',)
 #MOLECULES = ('c-HCOOH',)
 #MOLECULES = ('HNCO',)
 #MOLECULES = ('CH2(OD)CHO',)
+MOLECULES = ('SO',)
 
 # Source lists:
 SOURCES_970 = ('G10.62-0.38', 'G11.1-0.12', 'G11.92-0.61',
@@ -206,6 +207,7 @@ LINE_TRANSITIONS = {
              'J=24-23,l=1f'),
     'NH2CHO': ('11(2,10)-10(2,9)',),
     'CH2(OD)CHO': ('59(13,46)-59(12,47)',),
+    'SO': ('6(5)-5(4)',),
 }
 
 # Saved molecules
@@ -218,6 +220,7 @@ SAVED_MOLS = {
     'c-HCOOH': MOL_DIR / 'c-hcooh.json',
     'HNCO': MOL_DIR / 'hnco.json',
     'CH2(OD)CHO': MOL_DIR / 'glycolaldehyde.json',
+    'SO': MOL_DIR / 'so.json',
 }
 
 def search_molecule(source, molecule, array, line_filter=None):
@@ -458,21 +461,32 @@ def pv_rotation(pvconfig: Path,
     #         f'{plotname}', '--function', 'plot']
     #pvmap_fitter(list(map(str, pvmaps)) + flags)
 
-def split_moments(source, outdir, configs, figures, array,
-                  #molecules=['SiO', '(13)CO'],
-                  molecules=['CH3OH'],
-                  # SiO 480kHz
-                  #chansep=5, chanwidth=6, bandwidth=80):
-                  # CH3OH 900kHz
-                  chansep=3, chanwidth=3, bandwidth=10):
-                  # CH3OH 480kHz
-                  #chansep=3, chanwidth=4, bandwidth=20):
+def split_moments(source: Source,
+                  hmc: str,
+                  outdir: Path,
+                  array: str,
+                  molecules: Sequence = MOLECULES):
+    """Calulate moment zero maps either side of line."""
+    chansep_def = {488: 5, 976: 3}
+    chanwidth_def = {488: 6, 976: 3}
+    bandwidth_def = {488: 80, 976: 40}
+
     # Calculate split moments
     for mol in molecules:
+        # Find what molecules are in the source
         configs_with_mol = search_molecule(source, mol, array)
         norm_mol = mol.replace('(', '').replace(')', '')
-        for config in configs_with_mol:
-            cube = config['file']
+
+        # Iterate configs
+        for src_cfg in configs_with_mol:
+            # Some values
+            cube = src_cfg['file']
+            width = int(src_cfg['chan_width'].split()[0])
+            chansep = chansep_def[width]
+            chanwidth = chanwidth_def[width]
+            bandwidth = bandwidth_def[width]
+
+            # Flags
             flags = ['--vlsr', f'{source.vlsr.value}',
                      f'{source.vlsr.unit}'.replace(' ', ''),
                      '--line_lists', LINE_LISTS.get(mol, 'CDMS'),
@@ -484,7 +498,8 @@ def split_moments(source, outdir, configs, figures, array,
             if 'rms' in config:
                 flags += ['--rms'] + config['rms'].split()
             dir_suff = f'{mol}_split{chansep}_{chanwidth}'
-            moldir = (outdir / norm_mol /
+            basedir = outdir / f'{hmc}_split_moments'
+            moldir = (basedir / norm_mol /
                       f'split{chansep}_width{chanwidth}_range{bandwidth}')
             moving_moments(flags + [f'{bandwidth}', f'{moldir}', cube])
 
@@ -585,7 +600,7 @@ if __name__ == '__main__':
         3: moment1_gradients,
         4: pv_maps,
         5: peak_spectrum,
-    #    2: split_moments,
+        6: split_moments,
     #    4: extract_cassis,
     #    5: cassis_to_fits,
     #    7: peak_maps,
@@ -608,7 +623,7 @@ if __name__ == '__main__':
             # Open source
             src = Source(config_file=config)
             outdir = RESULTS / src.name / array / 'per_hot_core'
-            hmc = config.stem.split('_')[-1]
+            hmc = src.indexed_name or config.stem.split('_')[-1]
 
             # Run steps
             for n, func in steps.items():
