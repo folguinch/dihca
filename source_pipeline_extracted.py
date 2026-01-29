@@ -498,8 +498,8 @@ def split_moments(source: Source,
                      '--molecule', mol]
             if mol in SAVED_MOLS:
                 flags += ['--restore_molecule', f'{SAVED_MOLS[mol]}']
-            if 'rms' in config:
-                flags += ['--rms'] + config['rms'].split()
+            if 'rms' in src_cfg:
+                flags += ['--rms'] + src_cfg['rms'].split()
             dir_suff = f'{mol}_split{chansep}_{chanwidth}'
             basedir = outdir / f'{hmc}_split_moments'
             moldir = (basedir / norm_mol /
@@ -610,7 +610,7 @@ if __name__ == '__main__':
     #    8: line_cube,
     }
     #skip = [3, 4]
-    skip = [1, 2, 3, 4]
+    skip = [1, 2, 3, 4, 5]
     #skip = [4]
     #skip = []
     array = 'c5c8'
@@ -629,12 +629,13 @@ if __name__ == '__main__':
             # Open source
             src = Source(config_file=config)
             outdir = RESULTS / src.name / array / 'per_hot_core'
-            hmc = src.indexed_name or config.stem.split('_')[-1]
+            hmc_name = src.indexed_name or config.stem.split('_')[-1]
+            print(f'Index: {hmc_name}')
 
             # Run steps
             for n, func in steps.items():
                 if n in skip:
                     continue
                 print(f'Step {n}')
-                func(src, hmc, outdir, array)
+                func(src, hmc_name, outdir, array)
                 print("=" * 80)
