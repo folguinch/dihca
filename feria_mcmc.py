@@ -1,4 +1,5 @@
 #!/bin/python3
+"""Classes and functions for MCMC fitting with FERIA."""
 from typing import Dict, Tuple, List
 from configparser import ConfigParser, ExtendedInterpolation
 from itertools import product
@@ -82,9 +83,10 @@ class ObsFit:
 
         # Source pv
         if 'pv_rms' in self.config['data']:
-            pv_disk, pv_out = self.get_pv_pars()
-            self.data['pv_disk'] = pv_disk
-            self.data['pv_out'] = pv_out
+            self.data['pv_data'] = self.get_pv_pars()
+            #pv_disk, pv_out = self.get_pv_pars()
+            #self.data['pv_disk'] = pv_disk
+            #self.data['pv_out'] = pv_out
 
     @property
     def position(self) -> SkyCoord:
@@ -195,76 +197,159 @@ class ObsFit:
 
         return cube_pars, beam_pars
 
-    def get_pv_pars(self) -> Tuple[Dict]:
+    def _get_pv(self,
+                label: str,
+                cube: SpectralCube,
+                length: u.Quantity,
+                width: u.Quantity,
+                angle: u.Quantity,
+                rms: u.Quantity,
+                nsigma: float,
+                ):
+        """Load pv map."""
+        suffix = f'.pv_{label}.fits'
+        filename = self.data['cube']['imagename'].with_suffix(suffix)
+        if not filename.exists():
+            pv = get_pvmap_from_slit(cube, self.position, length, width, angle,
+                                     recenter=True)
+            pv.writeto(filename)
+
+        # Load stored
+        pv = fits.open(filename)[0]
+        bunit = u.Unit(pv.header['BUNIT'])
+
+        # Masks
+        mask = pv.data * bunit >= nsigma * rms.to(bunit)
+        mask, dilate = proportional_dilation(mask, fraction=2)
+
+        # Save mask
+        mask_suffix = f'.{nsigma}sigma.dilate{dilate}.mask.fits'
+        maskfile = filename.with_suffix(mask_suffix)
+        if not maskfile.exists():
+            hdu = fits.PrimaryHDU(data=mask.astype(int),
+                                  header=pv.header)
+            hdu.writeto(maskfile)
+
+        return pv, bunit, mask
+
+    def get_pv_pars(self) -> Dict:
         """Load pv data."""
-        # Open maps
-        cube = SpectralCube.read(self.data['cube']['cubename'])
-        pv_disk_name = self.data['cube']['imagename'].with_suffix(
-            '.pv_disk.fits')
-        pv_out_name = self.data['cube']['imagename'].with_suffix('.pv_out.fits')
+        # Separate cases
+        if 'pa_disk' in self.config['info']:
+            angles = {'disk': u.Quantity(self.config.get('info', 'pa_disk')),
+                      'out': u.Quantity(self.config.get('info', 'pa_out'))}
+        elif 'pv_angles' in self.config['info']:
+            vals, unit = self.config['info']['pv_angles'].split()
+            vals = [u.Quantity(f'{val}{unit}') for val in vals.split(',')]
+            if 'pv_labels' in self.config['info']:
+                labels = self.config['info']['pv_labels'].split()
+            else:
+                labels = [f'{val.value:g}' for val in vals]
+            angles = {label: val for label, val in zip(labels, vals)}
+        elif 'pv_auto' in self.config['info']:
+            nangles, *start = self.config['info']['pv_auto'].split()
+            start = u.Quantity(' '.join(start))
+            vals = np.linspace(start.to(u.deg).value,
+                               start.to(u.deg).value + 180,
+                               nangles + 1)[:-1]
+            labels = [f'{val:g}' for val in vals]
+            angles = {label: val*start.unit for label, val in zip(labels, vals)}
+
+        # Get weights
+        aux = self.config.get('info', 'pv_weights', fallback='0.4').split()
+        if len(aux) == len(angles):
+            weights = {}
+            for label, weight in zip(angles, aux):
+                weights[label] = float(weight)
+        elif len(aux) == 1:
+            weights = {label: float(aux[0]) for label in angles}
+        else:
+            raise ValueError(f'Cannot determine weights: {aux}')
+
+        # Global parameters
         length = u.Quantity(self.config.get('data', 'pv_length'))
         width = u.Quantity(self.config.get('data', 'pv_width'))
-        if not pv_disk_name.exists():
-            angle = u.Quantity(self.config.get('info', 'pa_disk'))
-            pv_disk = get_pvmap_from_slit(cube, self.position,
-                                          length, width, angle,
-                                          recenter=True)
-            pv_disk.writeto(pv_disk_name)
-        if not pv_out_name.exists():
-            angle = u.Quantity(self.config.get('info', 'pa_out'))
-            pv_out = get_pvmap_from_slit(cube, self.position,
-                                         length, width, angle,
-                                         recenter=True)
-            pv_out.writeto(pv_out_name)
-        #pv_disk = self.config['data']['pvmap_disk']
-        #pv_out = self.config['data']['pvmap_out']
-        pv_disk = fits.open(pv_disk_name)[0]
-        pv_out = fits.open(pv_out_name)[0]
-        bunit = u.Unit(pv_disk.header['BUNIT'])
-
-        # PV rms
         rms = u.Quantity(self.config['data']['pv_rms'])
         nsigma = self.config.getfloat('data', 'pv_nsigma ', fallback=3)
         #dilate = self.config.getfloat('data', 'pv_nsigma ', fallback=5)
-        rms = rms.to(bunit)
 
-        # Masks
-        mask_disk = pv_disk.data * bunit >= nsigma * rms
-        mask_out = pv_out.data * bunit >= nsigma * rms
-        #mask_disk = binary_dilation(mask_disk, iterations=dilate)
-        #mask_out = binary_dilation(mask_out, iterations=dilate)
-        mask_disk, dilate_disk = proportional_dilation(mask_disk, fraction=2)
-        mask_out, dilate_out = proportional_dilation(mask_out, fraction=2)
+        # Open cube
+        cube = SpectralCube.read(self.data['cube']['cubename'])
 
-        # Save mask
-        maskfile = pv_disk_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_disk}.mask.fits')
-        if not maskfile.exists():
-            hdu = fits.PrimaryHDU(data=mask_disk.astype(int),
-                                  header=pv_disk.header)
-            hdu.writeto(maskfile)
-        maskfile = pv_out_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_out}.mask.fits')
-        if not maskfile.exists():
-            hdu = fits.PrimaryHDU(data=mask_out.astype(int),
-                                  header=pv_out.header)
-            hdu.writeto(maskfile)
+        # Load maps
+        pv_data = {}
+        for label, angle in angles.items():
+            pv, bunit, mask = self._get_pv(label, cube, length, width, angle,
+                                           rms, nsigma)
+            pv_data[label] = {
+                'data': np.ma.array(pv.data / np.nanmax(pv.data),
+                                    mask=~mask),
+                #'axes': imtools.get_coord_axes(pv),
+                'rms': rms.to(bunit).value / np.nanmax(pv.data),
+                'path': (length, width, angle),
+                'weight': weights[label],
+            }
 
-        # Store data
-        data_disk = {
-            #'pv_header': pv_disk.header,
-            'data': np.ma.array(pv_disk.data / np.nanmax(pv_disk.data),
-                                mask=~mask_disk),
-            'axes': imtools.get_coord_axes(pv_disk),
-            'rms': rms.value / np.nanmax(pv_disk.data),
-        }
-        data_out = {
-            #'pv_header': pv_out.header,
-            'data': np.ma.array(pv_out.data / np.nanmax(pv_out.data),
-                                mask=~mask_out),
-            'axes': imtools.get_coord_axes(pv_out),
-            'rms': rms.value / np.nanmax(pv_out.data),
-        }
+        return pv_data
+
+        #pv_disk_name = self.data['cube']['imagename'].with_suffix(
+        #    '.pv_disk.fits')
+        #pv_out_name = self.data['cube']['imagename'].with_suffix('.pv_out.fits')
+        #if not pv_disk_name.exists():
+        #    angle = u.Quantity(self.config.get('info', 'pa_disk'))
+        #    pv_disk = get_pvmap_from_slit(cube, self.position,
+        #                                  length, width, angle,
+        #                                  recenter=True)
+        #    pv_disk.writeto(pv_disk_name)
+        #if not pv_out_name.exists():
+        #    angle = u.Quantity(self.config.get('info', 'pa_out'))
+        #    pv_out = get_pvmap_from_slit(cube, self.position,
+        #                                 length, width, angle,
+        #                                 recenter=True)
+        #    pv_out.writeto(pv_out_name)
+        ##pv_disk = self.config['data']['pvmap_disk']
+        ##pv_out = self.config['data']['pvmap_out']
+        #pv_disk = fits.open(pv_disk_name)[0]
+        #pv_out = fits.open(pv_out_name)[0]
+        #bunit = u.Unit(pv_disk.header['BUNIT'])
+
+        ## Masks
+        #mask_disk = pv_disk.data * bunit >= nsigma * rms
+        #mask_out = pv_out.data * bunit >= nsigma * rms
+        ##mask_disk = binary_dilation(mask_disk, iterations=dilate)
+        ##mask_out = binary_dilation(mask_out, iterations=dilate)
+        #mask_disk, dilate_disk = proportional_dilation(mask_disk, fraction=2)
+        #mask_out, dilate_out = proportional_dilation(mask_out, fraction=2)
+
+        ## Save mask
+        #maskfile = pv_disk_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_disk}.mask.fits')
+        #if not maskfile.exists():
+        #    hdu = fits.PrimaryHDU(data=mask_disk.astype(int),
+        #                          header=pv_disk.header)
+        #    hdu.writeto(maskfile)
+        #maskfile = pv_out_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_out}.mask.fits')
+        #if not maskfile.exists():
+        #    hdu = fits.PrimaryHDU(data=mask_out.astype(int),
+        #                          header=pv_out.header)
+        #    hdu.writeto(maskfile)
+
+        ## Store data
+        #data_disk = {
+        #    #'pv_header': pv_disk.header,
+        #    'data': np.ma.array(pv_disk.data / np.nanmax(pv_disk.data),
+        #                        mask=~mask_disk),
+        #    'axes': imtools.get_coord_axes(pv_disk),
+        #    'rms': rms.value / np.nanmax(pv_disk.data),
+        #}
+        #data_out = {
+        #    #'pv_header': pv_out.header,
+        #    'data': np.ma.array(pv_out.data / np.nanmax(pv_out.data),
+        #                        mask=~mask_out),
+        #    'axes': imtools.get_coord_axes(pv_out),
+        #    'rms': rms.value / np.nanmax(pv_out.data),
+        #}
         
-        return data_disk, data_out
+        #return data_disk, data_out
 
     def get_param_ranges(self):
         """Read range of parameters from config."""
@@ -304,8 +389,23 @@ class Model:
         template = Template(template.read_text())
         outcube = output / self.get_cubename()
         infile = outcube.with_suffix('.in')
-        params = {key: f'{val}' for key, val in self.pars.items()}
+        params = {}
+        for key, val in self.pars.items():
+            if key in ['dra', 'ddec']:
+                continue
+            params[key] = f'{val}'
+        #params = {key: f'{val}' for key, val in self.pars.items()}
         params = params | obspars.source | obspars.obs_pars
+        
+        # Shift model coordinates
+        if self.pars['dra'] != 0 or self.pars['ddec'] != 0:
+            pos = obspars.position
+            dra = self.pars['dra'] * u.mas
+            ddec = self.pars['ddec'] * u.mas
+            pos = SkyCoord(pos.ra + dra, pos.dec + ddec, frame=pos.frame.name)
+            ra, dec = pos.to_string(style='hmsdms').split()
+            params['ra'], params['dec'] = ra, dec
+
         infile.write_text(template.substitute(output=f'{outcube}',
                                               **params))
         if not outcube.is_file():
@@ -431,8 +531,9 @@ def log_posterior_pv(params: Dict, **kwargs):
         #model_cube = SpectralCube.read(model_cube_name)
         #model_cube = model_cube.with_spectral_unit(u.km/u.s,
         #                                           velocity_convention='radio')
-        model_pv_disk, model_pv_out, model_max = pv_products(model_cube_name,
-                                                             obs)
+        #model_pv_disk, model_pv_out, model_max = pv_products(model_cube_name,
+        #                                                     obs)
+        model_pvs, model_max = pv_products(model_cube_name, obs)
 
         ## Convert to CASA
         #cube_name = model_cube_name.with_suffix('.image')
@@ -508,36 +609,60 @@ def log_posterior_pv(params: Dict, **kwargs):
         ##hdu.writeto(model_cube_name.with_suffix('.interp.norm.pv_disk.fits'))
 
         # Chi
-        sigma_disk = np.repeat(obs.data['pv_disk']['rms'],
-                               np.sum(~obs.data['pv_disk']['data'].mask))
-        term1_disk = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_disk**2))
-        norm_model_pv_disk = model_pv_disk.data / np.nanmax(model_pv_disk.data)
-        chi2_disk = (obs.data['pv_disk']['data'] - norm_model_pv_disk )**2 
-        chi2_disk = chi2_disk / obs.data['pv_disk']['rms']**2
-        term2_disk = -0.5 * np.ma.sum(chi2_disk)
-        sigma_out = np.repeat(obs.data['pv_out']['rms'],
-                              np.sum(~obs.data['pv_out']['data'].mask))
-        term1_out = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_out**2))
-        norm_model_pv_out = model_pv_out.data / np.nanmax(model_pv_out.data)
-        chi2_out = (obs.data['pv_out']['data'] - norm_model_pv_out )**2 
-        chi2_out = chi2_out / obs.data['pv_out']['rms']**2
-        term2_out = -0.5 * np.ma.sum(chi2_out)
-        #max_max = np.nanmax(obs.data['cube']['max_map'])
-        sigma_max = np.repeat(obs.data['cube']['sigma_vel'],
-                              np.sum(~obs.data['cube']['max_map'].mask))
-        term1_max = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_max**2))
-        chi2_max = (obs.data['cube']['max_map'] - model_max)**2 
-        chi2_max = chi2_max / obs.data['cube']['sigma_vel']**2
-        term2_max = -0.5 * np.ma.sum(chi2_max)
+        chis = []
+        total_weight = 0
+        for label, model_pv in model_pvs.items():
+            sigma = np.repeat(obs.data['pv_data'][label]['rms'],
+                              np.sum(~obs.data['pv_data'][label]['data'].mask))
+            term1 = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma**2))
+            norm_model = model_pv.data / np.nanmax(model_pv.data)
+            chi2 = (obs.data['pv_data'][label]['data'] - norm_model)**2
+            chi2 = chi2 / obs.data['pv_data'][label]['rms']**2
+            term2 = -0.5 * np.ma.sum(chi2)
+            weight = obs.data['pv_data'][label]['weight']
+            chis.append((term1 + term2) * weight)
+            total_weight += weight
+        #sigma_disk = np.repeat(obs.data['pv_disk']['rms'],
+        #                       np.sum(~obs.data['pv_disk']['data'].mask))
+        #term1_disk = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_disk**2))
+        #norm_model_pv_disk = model_pv_disk.data / np.nanmax(model_pv_disk.data)
+        #chi2_disk = (obs.data['pv_disk']['data'] - norm_model_pv_disk )**2 
+        #chi2_disk = chi2_disk / obs.data['pv_disk']['rms']**2
+        #term2_disk = -0.5 * np.ma.sum(chi2_disk)
+        #sigma_out = np.repeat(obs.data['pv_out']['rms'],
+        #                      np.sum(~obs.data['pv_out']['data'].mask))
+        #term1_out = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_out**2))
+        #norm_model_pv_out = model_pv_out.data / np.nanmax(model_pv_out.data)
+        #chi2_out = (obs.data['pv_out']['data'] - norm_model_pv_out )**2 
+        #chi2_out = chi2_out / obs.data['pv_out']['rms']**2
+        #term2_out = -0.5 * np.ma.sum(chi2_out)
+        ##max_max = np.nanmax(obs.data['cube']['max_map'])
+
+        if total_weight != 1:
+            sigma_max = np.repeat(obs.data['cube']['sigma_vel'],
+                                  np.sum(~obs.data['cube']['max_map'].mask))
+            term1_max = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_max**2))
+            chi2_max = (obs.data['cube']['max_map'] - model_max)**2 
+            chi2_max = chi2_max / obs.data['cube']['sigma_vel']**2
+            term2_max = -0.5 * np.ma.sum(chi2_max)
+            weight_max = 1 - total_weight
+            if weight_max < 0:
+                raise ValueError
+            chis.append((term1_max + term2_max) * weight_max)
 
         # Save model cube
         #spcube = SpectralCube(data=new_cube, wcs=obs.data['wcs'])
         #spcube.write(model_cube.with_suffix('.interp.fits'))
-        total = ((term1_disk + term2_disk) * 0.4 +
-                 (term1_out + term2_out) * 0.4 +
-                 (term1_max + term2_max) * 0.2)
+        #total = ((term1_disk + term2_disk) * 0.4 +
+        #         (term1_out + term2_out) * 0.4 +
+        #         (term1_max + term2_max) * 0.2)
+        #total = np.sum(chis) + (term1_max + term2_max) * weight_max
      
-        return total
+        chi_tot = np.sum(chis)
+        if np.isnan(chi_tot):
+            return -np.inf
+        else:
+            return chi_tot
 
     def log_prior(params, ranges):
         if params['rin'] == 'CB':
@@ -576,24 +701,36 @@ def pv_products(model_cube_name: Path,
                                                velocity_convention='radio')
         
     # Get pv maps from cube
-    length = u.Quantity(obs.config.get('data', 'pv_length'))
-    width = u.Quantity(obs.config.get('data', 'pv_width'))
-    angle_disk = u.Quantity(obs.config.get('info', 'pa_disk'))
-    angle_out = u.Quantity(obs.config.get('info', 'pa_out'))
-    if save_products:
-        filename_disk = model_cube_name.with_suffix('.regrid.pv_disk.fits')
-        filename_out = model_cube_name.with_suffix('.regrid.pv_out.fits')
-    else:
-        filename_disk = None
-        filename_out = None
-    model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
-                                        length, width, angle_disk,
-                                        recenter=True, filename=filename_disk)
-    model_pv_disk.data[np.isnan(model_pv_disk.data)] = 0.
-    model_pv_out = get_pvmap_from_slit(model_cube, obs.position,
-                                       length, width, angle_out,
-                                       recenter=True, filename=filename_out)
-    model_pv_out.data[np.isnan(model_pv_out.data)] = 0.
+    model_pvs = {}
+    for label, data in obs.data['pv_data'].items():
+        length, width, angle = data['path']
+        if save_products:
+            filename = model_cube_name.with_suffix(f'.regrid.pv_{label}.fits')
+        else:
+            filename = None
+        model_pv = get_pvmap_from_slit(model_cube, obs.position,
+                                       length, width, angle,
+                                       recenter=True, filename=filename)
+        model_pv.data[np.isnan(model_pv.data)] = 0.
+        model_pvs[label] = model_pv
+    #length = u.Quantity(obs.config.get('data', 'pv_length'))
+    #width = u.Quantity(obs.config.get('data', 'pv_width'))
+    #angle_disk = u.Quantity(obs.config.get('info', 'pa_disk'))
+    #angle_out = u.Quantity(obs.config.get('info', 'pa_out'))
+    #if save_products:
+    #    filename_disk = model_cube_name.with_suffix('.regrid.pv_disk.fits')
+    #    filename_out = model_cube_name.with_suffix('.regrid.pv_out.fits')
+    #else:
+    #    filename_disk = None
+    #    filename_out = None
+    #model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
+    #                                    length, width, angle_disk,
+    #                                    recenter=True, filename=filename_disk)
+    #model_pv_disk.data[np.isnan(model_pv_disk.data)] = 0.
+    #model_pv_out = get_pvmap_from_slit(model_cube, obs.position,
+    #                                   length, width, angle_out,
+    #                                   recenter=True, filename=filename_out)
+    #model_pv_out.data[np.isnan(model_pv_out.data)] = 0.
 
     # Get max map
     model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
@@ -603,7 +740,8 @@ def pv_products(model_cube_name: Path,
                               header=model_cube.wcs.sub(2).to_header())
         hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
 
-    return model_pv_disk, model_pv_out, model_max
+    #return model_pv_disk, model_pv_out, model_max
+    return model_pvs, model_max
 
 #basedir = Path('./')
 #fname_cubein = Path('./feria.in')

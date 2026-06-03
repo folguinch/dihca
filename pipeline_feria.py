@@ -16,9 +16,10 @@ from feria_mcmc import log_posterior_cube, ObsFit, Model, log_posterior_pv, pv_p
 #MOLECULE = 'CH3OH'
 #TRANSITION = '18(3,15)-17(4,14)A,vt=0'
 SOURCES = {
-    #'G335.579-0.272': ('almae4',),
-    'G35.20-0.74_N': ('almae1',),
-    'NGC_6334_I_N': ('almae8',),
+    'G335.579-0.272': ('ALMAe4',),
+    #'G335.579-0.272': ('ALMAe1',),
+    #'G35.20-0.74_N': ('ALMAe1',),
+    #'NGC_6334_I_N': ('ALMAe8',),
 }
 #SECTIONS = {
 #    'CH3OH': ('b6_c5c8_spw0_1000_CH3OH_18_3_15_-17_4_14_A_vt_0',
@@ -74,6 +75,9 @@ LABELS = {
     'rout': r'$R_{\rm out}$',
     'lw': 'Line width (km/s)',
     'pa': 'P.A. (deg)',
+    'dra': r'$\Delta$R.A. (mas)',
+    'ddec': r'$\Delta$Decl. (mas)',
+    'ireflare': r'$\theta_{IRE}$ (deg)',
 }
 
 def initialize_guesses(param_ranges, nwalkers):
@@ -122,6 +126,9 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
                         'ranges': params_ranges,
                         'obs': obs,
                         'outdir': out_iter}
+    filename = outdir / 'chain.h5'
+    backend = emcee.backends.HDFBackend(filename)
+    backend.reset(nwalkers, len(params_ranges))
     with Pool(ncore) as pool:
         sampler = emcee.EnsembleSampler(
             nwalkers,
@@ -130,6 +137,7 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
             kwargs=posterior_kwargs,
             pool=pool,
             parameter_names=list(params_ranges.keys()),
+            backend=backend,
             )
         sampler.run_mcmc(guesses, nsteps, progress=True)
     
