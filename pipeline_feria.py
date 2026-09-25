@@ -2,6 +2,8 @@
 from multiprocessing import Pool
 from configparser import ConfigParser
 import datetime
+import os
+import json
 
 import corner
 import emcee
@@ -27,6 +29,7 @@ SOURCES = {
 #}
 NCORE = 10
 NWALKERS, NSTEPS, NBURN = 200, 250, 180
+MAXITER = 30
 #NCORE = 1
 #NWALKERS, NSTEPS, NBURN = 15, 30, 10
 CUBE_FIT = False
@@ -105,8 +108,8 @@ def show_walkers(sampler, parameters, output):
     plt.savefig(output / 'mcmc_walkers.pdf', bbox_inches='tight')
 
 def show_bestfit_paras(sampler, parameters, output):
-
     # show the summary plot of fitted parameters
+    plt.close()
     plt.figure(figsize=(10, 10))
     labels = [LABELS[key] for key in parameters]
     corner.corner(sampler, labels=labels, quantiles=[0.16, 0.5, 0.84],
@@ -118,7 +121,6 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
     # initialize guesses
     guesses = initialize_guesses(params_ranges, nwalkers)
 
-    # Run MCMC
     start = datetime.datetime.now()
     out_iter = outdir / 'models'
     out_iter.mkdir(parents=False, exist_ok=True)
@@ -128,27 +130,75 @@ def calc_mcmc(params_ranges, params_fixed, obs, outdir, ncore=NCORE,
                         'outdir': out_iter}
     filename = outdir / 'chain.h5'
     backend = emcee.backends.HDFBackend(filename)
-    backend.reset(nwalkers, len(params_ranges))
+    #backend.reset(nwalkers, len(params_ranges))
+    autocorr_file = outdir / 'autocorr.json'
+    if autocorr_file.is_file():
+        print('Reading autocorr file')
+        autocorr = json.loads(autocorr_file.read_text())
+        old_tau = autocorr[-1]
+        print(f'Old autocorr tau: {old_tau}')
+    else:
+        autocorr = [] #np.empty(MAXITER)
+        old_tau = np.inf
+    # Run MCMC
     with Pool(ncore) as pool:
-        sampler = emcee.EnsembleSampler(
-            nwalkers,
-            len(params_ranges),
-            log_posterior_cube if CUBE_FIT else log_posterior_pv,
-            kwargs=posterior_kwargs,
-            pool=pool,
-            parameter_names=list(params_ranges.keys()),
-            backend=backend,
-            )
-        sampler.run_mcmc(guesses, nsteps, progress=True)
+        for i in range(MAXITER):
+            sampler = emcee.EnsembleSampler(
+                nwalkers,
+                len(params_ranges),
+                log_posterior_cube if CUBE_FIT else log_posterior_pv,
+                kwargs=posterior_kwargs,
+                pool=pool,
+                parameter_names=list(params_ranges.keys()),
+                backend=backend,
+                )
+            sampler.run_mcmc(guesses, nsteps, progress=True)
+
+            # Check convergence
+            print('Checking convergence')
+            tau = sampler.get_autocorr_time(tol=0)
+            autocorr.append(float(np.mean(tau)))
+            autocorr_file.write_text(json.dumps(autocorr))
+            converged = (np.all(tau * 100 < sampler.iteration) &
+                         np.all(np.abs(old_tau - tau) / tau < 0.01))
+            if converged:
+                print('Chain converged')
+                break
+            os.system(f'rm -r {out_iter}')
+            out_iter.mkdir(parents=False, exist_ok=True)
+            old_tau = tau
     
-    # Plots
+    # Plot walkers
     show_walkers(sampler, params_ranges, outdir)
-    post = np.concatenate(sampler.chain[:, nburn:, :])
+
+    # Post-process chain
+    #tau = backend.get_autocorr_time(tol=0)
+    print(f'Mean autocorrelation times per iteration: {autocorr}')
+    burnin = int(2 * np.max(tau))
+    print(f'Final tau: {tau}')
+    print(f'Burn: {burnin}')
+    #thin = int(0.5 * np.min(tau))
+    #post = np.concatenate(sampler.chain[:, nburn:, :])
+    post = sampler.get_chain(discard=burnin, flat=True)
+    #post = backend.get_chain(discard=burnin, flat=True)
     show_bestfit_paras(post, params_ranges, outdir)
+
+    # Plot tau
+    n = nsteps * np.arange(1, len(autocorr) + 1)
+    y = np.array(autocorr)
+    plt.close()
+    plt.plot(n, n / 100.0, '--k')
+    plt.plot(n, y)
+    plt.xlim(0, n.max())
+    plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
+    plt.xlabel('Number of steps')
+    plt.ylabel(r'Mean $\hat{\tau}$')
+    plt.savefig(outdir / 'autocorrelation_time.png')
+    plt.close()
 
     # Print the best fit parameters
     fout = outdir / 'mcmc_paramters.dat'
-    txtlines = []
+    txtlines = [f'burn: {burnin}']
     final_params = {}
     for i, param in enumerate(params_ranges):
        mcmc = np.percentile(post[:, i], [16, 50, 84])
