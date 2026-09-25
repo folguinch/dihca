@@ -1,0 +1,15 @@
+{
+    "name": "dummy",
+    "transitions": [
+        {
+            "species": "dummy",
+            "qns": "2-1",
+            "restfreq": 233.917445,
+            "restfreq_unit": "GHz",
+            "logaij": -1,
+            "obsfreq": null,
+            "eup": 100,
+            "eup_unit": "K"
+        }
+    ]
+}

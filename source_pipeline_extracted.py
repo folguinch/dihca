@@ -224,6 +224,7 @@ SAVED_MOLS = {
     'HNCO': MOL_DIR / 'hnco.json',
     'CH2(OD)CHO': MOL_DIR / 'glycolaldehyde.json',
     'SO': MOL_DIR / 'so.json',
+    'dummy': MOL_DIR / 'dummy.json',
 }
 
 def search_molecule(source, molecule, array, line_filter=None):

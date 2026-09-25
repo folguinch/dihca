@@ -8,6 +8,7 @@ SAVED_MOLS = {
     'c-HCOOH': MOL_DIR / 'c-hcooh.json',
     'HNCO': MOL_DIR / 'hnco.json',
     'CH2(OD)CHO': MOL_DIR / 'glycolaldehyde.json',
+    'dummy': MOL_DIR / 'dummy.json',
 }
 
 NORM_SOURCES = {
