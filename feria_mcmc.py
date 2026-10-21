@@ -7,7 +7,6 @@ from pathlib import Path
 from string import Template
 import sys
 import subprocess
-import math
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -16,10 +15,8 @@ from astropy.io import fits
 from casatasks import importfits, imregrid
 from line_little_helper.molecule import Molecule
 from line_little_helper.pvmap_extractor import get_pvmap_from_slit
-#from pvextractor import PathFromCenter, extract_pv_slice
 from scipy.interpolate import LinearNDInterpolator
 from scipy.ndimage import binary_dilation
-#from scipy.spatial import QhullError
 from spectral_cube import SpectralCube
 from toolkit.astro_tools.masking import proportional_dilation
 from toolkit.converters import array_to_hdu
@@ -47,9 +44,6 @@ class ObsFit:
 
     def __init__(self,
                  config: Path,
-                 #section: str,
-                 #line: str,
-                 #restfreq: u.Quantity,
                  outdir: Path,
                  pixsize: str = '0.01',
                  velres: str = '0.2'):
@@ -77,16 +71,12 @@ class ObsFit:
 
         # Source cube
         cube, cube_beam = self.get_cube_pars(outdir)
-        #cube.update(aux)
         self.obs_pars.update(cube_beam)
         self.data = {'cube': cube}
 
         # Source pv
         if 'pv_rms' in self.config['data']:
             self.data['pv_data'] = self.get_pv_pars()
-            #pv_disk, pv_out = self.get_pv_pars()
-            #self.data['pv_disk'] = pv_disk
-            #self.data['pv_out'] = pv_out
 
     @property
     def position(self) -> SkyCoord:
@@ -138,16 +128,13 @@ class ObsFit:
         unit = cube.unit
         beam = cube.beam
 
-        # Get axes
-        #ra, dec, vel = cube_axes(cube)
-        
         # Create masked data
         rms = self.config['data']['cube_rms'].split()
         rms = float(rms[0]) * u.Unit(rms[1])
         nsigma = self.config.getfloat('data', 'cube_nsigma', fallback=nsigma)
-        #dilate = self.config.getint('data', 'cube_dilate', fallback=dilate)
         data = cube.unmasked_data[:,:,:]
         mask = data >= nsigma * rms
+
         # Proportional dilate
         mask, dilate = proportional_dilation(mask)
         data = np.ma.array(data.value, mask=~mask)
@@ -175,6 +162,7 @@ class ObsFit:
         if not maxfile.exists():
             hdu = fits.PrimaryHDU(data=max_map.filled(fill_value=0.),
                                   header=cube.wcs.sub(2).to_header())
+            hdu.header['BUNIT'] = f'{cube.unit:fits}'
             hdu.writeto(maxfile)
 
         # Store parameters
@@ -186,9 +174,6 @@ class ObsFit:
                      'sigma_vel': sigma_vel,
                      'beam': beam,
                      'wcs': cube.wcs}
-        #self.data['ra'] = ra
-        #self.data['dec'] = dec
-        #self.data['vel'] = vel - vlsr
 
         # Store beam in obs params
         beam_pars = {'bmaj': f'{beam.major.to(u.arcsec).value}',
@@ -275,81 +260,30 @@ class ObsFit:
 
         # Open cube
         cube = SpectralCube.read(self.data['cube']['cubename'])
+        cube = cube.with_spectral_unit(u.km/u.s,
+                                       velocity_convention='radio',
+                                       rest_value=self.restfreq)
 
         # Load maps
         pv_data = {}
         for label, angle in angles.items():
             pv, bunit, mask = self._get_pv(label, cube, length, width, angle,
                                            rms, nsigma)
+            xunit = u.Unit(pv.header['CUNIT1'])
+            yunit = u.Unit(pv.header['CUNIT2'])
+            xdir = np.sign(float(pv.header['CDELT1']))
+            ydir = np.sign(float(pv.header['CDELT2']))
             pv_data[label] = {
                 'data': np.ma.array(pv.data / np.nanmax(pv.data),
                                     mask=~mask),
-                #'axes': imtools.get_coord_axes(pv),
                 'rms': rms.to(bunit).value / np.nanmax(pv.data),
                 'path': (length, width, angle),
                 'weight': weights[label],
+                'axes_units': (xunit, yunit),
+                'axes_directions': (xdir, ydir),
             }
 
         return pv_data
-
-        #pv_disk_name = self.data['cube']['imagename'].with_suffix(
-        #    '.pv_disk.fits')
-        #pv_out_name = self.data['cube']['imagename'].with_suffix('.pv_out.fits')
-        #if not pv_disk_name.exists():
-        #    angle = u.Quantity(self.config.get('info', 'pa_disk'))
-        #    pv_disk = get_pvmap_from_slit(cube, self.position,
-        #                                  length, width, angle,
-        #                                  recenter=True)
-        #    pv_disk.writeto(pv_disk_name)
-        #if not pv_out_name.exists():
-        #    angle = u.Quantity(self.config.get('info', 'pa_out'))
-        #    pv_out = get_pvmap_from_slit(cube, self.position,
-        #                                 length, width, angle,
-        #                                 recenter=True)
-        #    pv_out.writeto(pv_out_name)
-        ##pv_disk = self.config['data']['pvmap_disk']
-        ##pv_out = self.config['data']['pvmap_out']
-        #pv_disk = fits.open(pv_disk_name)[0]
-        #pv_out = fits.open(pv_out_name)[0]
-        #bunit = u.Unit(pv_disk.header['BUNIT'])
-
-        ## Masks
-        #mask_disk = pv_disk.data * bunit >= nsigma * rms
-        #mask_out = pv_out.data * bunit >= nsigma * rms
-        ##mask_disk = binary_dilation(mask_disk, iterations=dilate)
-        ##mask_out = binary_dilation(mask_out, iterations=dilate)
-        #mask_disk, dilate_disk = proportional_dilation(mask_disk, fraction=2)
-        #mask_out, dilate_out = proportional_dilation(mask_out, fraction=2)
-
-        ## Save mask
-        #maskfile = pv_disk_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_disk}.mask.fits')
-        #if not maskfile.exists():
-        #    hdu = fits.PrimaryHDU(data=mask_disk.astype(int),
-        #                          header=pv_disk.header)
-        #    hdu.writeto(maskfile)
-        #maskfile = pv_out_name.with_suffix(f'.{nsigma}sigma.dilate{dilate_out}.mask.fits')
-        #if not maskfile.exists():
-        #    hdu = fits.PrimaryHDU(data=mask_out.astype(int),
-        #                          header=pv_out.header)
-        #    hdu.writeto(maskfile)
-
-        ## Store data
-        #data_disk = {
-        #    #'pv_header': pv_disk.header,
-        #    'data': np.ma.array(pv_disk.data / np.nanmax(pv_disk.data),
-        #                        mask=~mask_disk),
-        #    'axes': imtools.get_coord_axes(pv_disk),
-        #    'rms': rms.value / np.nanmax(pv_disk.data),
-        #}
-        #data_out = {
-        #    #'pv_header': pv_out.header,
-        #    'data': np.ma.array(pv_out.data / np.nanmax(pv_out.data),
-        #                        mask=~mask_out),
-        #    'axes': imtools.get_coord_axes(pv_out),
-        #    'rms': rms.value / np.nanmax(pv_out.data),
-        #}
-        
-        #return data_disk, data_out
 
     def get_param_ranges(self):
         """Read range of parameters from config."""
@@ -385,7 +319,7 @@ class Model:
     def __call__(self,
                  output: Path,
                  obspars: ObsFit,
-                 template: Path = TEMPLATE) -> Tuple[Path, List[Path]]:
+                 template: Path = TEMPLATE) -> Path:
         template = Template(template.read_text())
         outcube = output / self.get_cubename()
         infile = outcube.with_suffix('.in')
@@ -422,6 +356,9 @@ class Model:
                          for k, v in self.pars.items()
                          if k not in self.fixed)]
         return '_'.join(cube) + '.fits'
+
+    def to_config(self, output: Path):
+        raise NotImplementedError
 
 def cube_axes(cube):
     nx = cube.shape[2]
@@ -528,85 +465,7 @@ def log_posterior_pv(params: Dict, **kwargs):
         # Compute model
         model = Model(fixed, **params)
         model_cube_name = model(model_dir, obs)
-        #model_cube = SpectralCube.read(model_cube_name)
-        #model_cube = model_cube.with_spectral_unit(u.km/u.s,
-        #                                           velocity_convention='radio')
-        #model_pv_disk, model_pv_out, model_max = pv_products(model_cube_name,
-        #                                                     obs)
         model_pvs, model_max = pv_products(model_cube_name, obs)
-
-        ## Convert to CASA
-        #cube_name = model_cube_name.with_suffix('.image')
-        #importfits(fitsimage=f'{model_cube_name}', imagename=f'{cube_name}',
-        #           overwrite=True)
-        #    
-        ## Regrid cube
-        #template = obs.data['cube']['imagename']
-        #cube_regrid = cube_name.with_suffix('.interp.image')
-        #imregrid(f'{cube_name}', template=f"{template}",
-        #         output=f'{cube_regrid}', asvelocity=True, overwrite=True)
-        #model_cube = SpectralCube.read(cube_regrid)
-        #model_cube = model_cube.with_spectral_unit(u.km/u.s,
-        #                                           velocity_convention='radio')
-        #
-        ## Get pv maps from cube
-        #length = u.Quantity(obs.config.get('data', 'pv_length'))
-        #width = u.Quantity(obs.config.get('data', 'pv_width'))
-        #angle_disk = u.Quantity(obs.config.get('info', 'pa_disk'))
-        #angle_out = u.Quantity(obs.config.get('info', 'pa_out'))
-        #model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
-        #                                    length, width, angle_disk,
-        #                                    recenter=True)
-        #model_pv_disk.data[np.isnan(model_pv_disk.data)] = 0.
-        ##model_pv_disk.data[obs.data['pv_disk']['data'].mask] = 0.
-        ##model_pv_disk.writeto(model_cube_name.with_suffix('.regrid.pv_disk.fits'))
-        #model_pv_out = get_pvmap_from_slit(model_cube, obs.position,
-        #                                   length, width, angle_out,
-        #                                   recenter=True)
-        #model_pv_out.data[np.isnan(model_pv_out.data)] = 0.
-        ##model_pv_out.data[obs.data['pv_out']['data'].mask] = 0.
-        ##model_pv_out.writeto(model_cube_name.with_suffix('.regrid.pv_out.fits'))
-
-        ## Get max map
-        #model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
-        #model_max = np.ma.fix_invalid(model_max, fill_value=0.0).data
-        ##hdu = fits.PrimaryHDU(data=model_max,
-        ##                      header=model_cube.wcs.sub(2).to_header())
-        ##hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
-
-        ##model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
-        ##                                    length, width, angle_disk,
-        ##                                    recenter=True)
-        ##model_pv_disk.writeto(model_cube_name.with_suffix('.pv_disk.fits'))
-
-        ### Max map
-        ##model_max_map = model_cube.max(axis=0)
-        ##model_max_map = array_to_hdu(model_max_map, model_cube)
-
-        ### Interpolate disk pv
-        ##xval, yval = imtools.get_coord_axes(model_pv_disk)
-        ##print(xval, yval)
-        ##xunit, yunit = xval.unit, yval.unit
-        ##xval, yval = np.meshgrid(xval.value, yval.value)
-        ##interp = LinearNDInterpolator(list(zip(xval.flatten(), yval.flatten())),
-        ##                              model_pv_disk.data.flatten())
-
-        ### Evaluate
-        ##new_xval, new_yval = np.meshgrid(*obs.data['pv_disk']['axes'])
-        ##print(new_xval, new_yval)
-        ##if new_xval.unit.is_equivalent(xunit):
-        ##    new_xval = new_xval.to(xunit).value
-        ##else:
-        ##    raise ValueError
-        ##if new_yval.unit.is_equivalent(yunit):
-        ##    new_yval = new_yval.to(yunit).value
-        ##else:
-        ##    ValueError
-        ##model_pv_disk = interp(new_xval, new_yval)
-        ##model_pv_disk = model_pv_disk / np.nanmax(model_pv_disk)
-        ##hdu = fits.PrimaryHDU(data=model_pv_disk,
-        ##                      header=obs.data['pv_disk']['pv_header'])
-        ##hdu.writeto(model_cube_name.with_suffix('.interp.norm.pv_disk.fits'))
 
         # Chi
         chis = []
@@ -622,21 +481,6 @@ def log_posterior_pv(params: Dict, **kwargs):
             weight = obs.data['pv_data'][label]['weight']
             chis.append((term1 + term2) * weight)
             total_weight += weight
-        #sigma_disk = np.repeat(obs.data['pv_disk']['rms'],
-        #                       np.sum(~obs.data['pv_disk']['data'].mask))
-        #term1_disk = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_disk**2))
-        #norm_model_pv_disk = model_pv_disk.data / np.nanmax(model_pv_disk.data)
-        #chi2_disk = (obs.data['pv_disk']['data'] - norm_model_pv_disk )**2 
-        #chi2_disk = chi2_disk / obs.data['pv_disk']['rms']**2
-        #term2_disk = -0.5 * np.ma.sum(chi2_disk)
-        #sigma_out = np.repeat(obs.data['pv_out']['rms'],
-        #                      np.sum(~obs.data['pv_out']['data'].mask))
-        #term1_out = -0.5 * np.ma.sum(np.log(2 * np.pi * sigma_out**2))
-        #norm_model_pv_out = model_pv_out.data / np.nanmax(model_pv_out.data)
-        #chi2_out = (obs.data['pv_out']['data'] - norm_model_pv_out )**2 
-        #chi2_out = chi2_out / obs.data['pv_out']['rms']**2
-        #term2_out = -0.5 * np.ma.sum(chi2_out)
-        ##max_max = np.nanmax(obs.data['cube']['max_map'])
 
         if total_weight != 1:
             sigma_max = np.repeat(obs.data['cube']['sigma_vel'],
@@ -650,14 +494,6 @@ def log_posterior_pv(params: Dict, **kwargs):
                 raise ValueError
             chis.append((term1_max + term2_max) * weight_max)
 
-        # Save model cube
-        #spcube = SpectralCube(data=new_cube, wcs=obs.data['wcs'])
-        #spcube.write(model_cube.with_suffix('.interp.fits'))
-        #total = ((term1_disk + term2_disk) * 0.4 +
-        #         (term1_out + term2_out) * 0.4 +
-        #         (term1_max + term2_max) * 0.2)
-        #total = np.sum(chis) + (term1_max + term2_max) * weight_max
-     
         chi_tot = np.sum(chis)
         if np.isnan(chi_tot):
             return -np.inf
@@ -684,7 +520,9 @@ def log_posterior_pv(params: Dict, **kwargs):
 
 def pv_products(model_cube_name: Path,
                 obs: ObsFit,
-                save_products: bool = False):
+                save_products: bool = False,
+                is_regrid: bool = False,
+                get_max_map: bool = True):
     """Generate products from model."""
     # Convert to CASA
     cube_name = model_cube_name.with_suffix('.image')
@@ -692,10 +530,13 @@ def pv_products(model_cube_name: Path,
                overwrite=True)
             
     # Regrid cube
-    template = obs.data['cube']['imagename']
-    cube_regrid = cube_name.with_suffix('.interp.image')
-    imregrid(f'{cube_name}', template=f"{template}",
-             output=f'{cube_regrid}', asvelocity=True, overwrite=True)
+    if not is_regrid:
+        template = obs.data['cube']['imagename']
+        cube_regrid = cube_name.with_suffix('.interp.image')
+        imregrid(f'{cube_name}', template=f"{template}",
+                 output=f'{cube_regrid}', asvelocity=True, overwrite=True)
+    else:
+        cube_regrid = cube_name
     model_cube = SpectralCube.read(cube_regrid)
     model_cube = model_cube.with_spectral_unit(u.km/u.s,
                                                velocity_convention='radio')
@@ -711,88 +552,37 @@ def pv_products(model_cube_name: Path,
         model_pv = get_pvmap_from_slit(model_cube, obs.position,
                                        length, width, angle,
                                        recenter=True, filename=filename)
+        # Check axes
+        xunit = u.Unit(model_pv.header['CUNIT1'])
+        yunit = u.Unit(model_pv.header['CUNIT2'])
+        xdir = np.sign(float(model_pv.header['CDELT1']))
+        ydir = np.sign(float(model_pv.header['CDELT2']))
+        if data['axes_units'][0] != xunit:
+            raise ValueError('PV X-units do not match')
+        elif data['axes_units'][1] != yunit:
+            raise ValueError('PV Y-units do not match')
+        if data['axes_directions'][0] != xdir:
+            raise ValueError('PV X-directions do not match')
+        elif data['axes_directions'][1] != ydir:
+            raise ValueError('PV Y-directions do not match')
+
+        # Pass
         model_pv.data[np.isnan(model_pv.data)] = 0.
         model_pvs[label] = model_pv
-    #length = u.Quantity(obs.config.get('data', 'pv_length'))
-    #width = u.Quantity(obs.config.get('data', 'pv_width'))
-    #angle_disk = u.Quantity(obs.config.get('info', 'pa_disk'))
-    #angle_out = u.Quantity(obs.config.get('info', 'pa_out'))
-    #if save_products:
-    #    filename_disk = model_cube_name.with_suffix('.regrid.pv_disk.fits')
-    #    filename_out = model_cube_name.with_suffix('.regrid.pv_out.fits')
-    #else:
-    #    filename_disk = None
-    #    filename_out = None
-    #model_pv_disk = get_pvmap_from_slit(model_cube, obs.position,
-    #                                    length, width, angle_disk,
-    #                                    recenter=True, filename=filename_disk)
-    #model_pv_disk.data[np.isnan(model_pv_disk.data)] = 0.
-    #model_pv_out = get_pvmap_from_slit(model_cube, obs.position,
-    #                                   length, width, angle_out,
-    #                                   recenter=True, filename=filename_out)
-    #model_pv_out.data[np.isnan(model_pv_out.data)] = 0.
 
     # Get max map
-    model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
-    model_max = np.ma.fix_invalid(model_max, fill_value=0.0).data
-    if save_products:
-        hdu = fits.PrimaryHDU(data=model_max,
-                              header=model_cube.wcs.sub(2).to_header())
-        hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
+    if get_max_map:
+        model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
+        model_max = np.ma.fix_invalid(model_max, fill_value=np.nan).data
+        if save_products:
+            hdu = fits.PrimaryHDU(data=model_max,
+                                  header=model_cube.wcs.sub(2).to_header())
+            hdu.header['BUNIT'] = f'{model_cube.unit:fits}'
+            hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
+    else:
+        model_max = None
 
-    #return model_pv_disk, model_pv_out, model_max
     return model_pvs, model_max
-
-#basedir = Path('./')
-#fname_cubein = Path('./feria.in')
-#fname_exec = '../feria'
-
-#source = {'object': 'G336',
-#          'ra': '16h35m09.261s',
-#          'dec': '-48d46m47.66s',
-#          'vsys': '-47.2'}
-
-#obs_pars = {'line': 'CH3OH',
-#            'restfreq': '233.795666',
-#            'pixsize': '0.004',
-#            'velres': '0.1'}
-#
-#phys_pars = {'distance': ['3100'], # pc
-#             'mass': ['5', '8', '10', '12', '15'], # msun
-#             'rcb': ['100', '200.', '250', '300.', '350', '400.', '450', '500.'], # au
-#             'incl': ['50.', '55.', '60.', '65.', '70.', '75', '80.', '85', '90'],
-#             #'pa': ['125'],
-#             'pa': ['125', '130', '135', '140', '145', '150'],
-#             'rot': ['1'],
-#             'rout': ['700.', '800.', '900.', '1000'],
-#             'rin': ['CB'],
-#             'ireheight': ['0.'],
-#             'ireflare': ['30'],
-#             'irenprof': ['-1.5'],
-#             'iretprof': ['-0.4'],
-#             'kepheight': ['0.5'],
-#             'kepflare': ['30'],
-#             'kepnprof': ['-1.5'],
-#             'keptprof': ['-0.4'],
-#             'cbdens': ['1e-2'],
-#             'cbtemp': ['50'],
-#             'lw': ['2.0', '4.0', '6.0'],
-#             'bmaj': ['0.0692'],
-#             'bmin': ['0.0517'],
-#             'bpa': ['-29.07']
-#             #'bmaj': ['0'],
-#             #'bmin': ['0'],
-#             #'bpa': ['0']
-#             }
-#
-#pv_pars = {'pvpa': ['125'],
-#           'pvra': ['0.0'],
-#           'pvdec': ['0.0']}
-
-
-
-####################
-
 
 if __name__ == '__main__':
     ncube = np.prod([len(val) for val in phys_pars.values()])
