@@ -150,6 +150,7 @@ class ObsFit:
         # Max map
         mask = cube >= nsigma * rms
         cube = cube.with_mask(mask)
+        max_unit = cube.argmax_world(axis=0).unit
         max_map = np.ma.array(cube.argmax_world(axis=0).value, fill_value=0.)
         max_map = np.ma.masked_invalid(max_map)
         sigma_vel = np.mean(np.abs(cube.spectral_axis[:-1] -
@@ -160,9 +161,9 @@ class ObsFit:
         maxfile = imagename.with_suffix(
             f'.{nsigma}sigma.max_map.fits')
         if not maxfile.exists():
-            hdu = fits.PrimaryHDU(data=max_map.filled(fill_value=0.),
+            hdu = fits.PrimaryHDU(data=max_map.filled(fill_value=np.nan),
                                   header=cube.wcs.sub(2).to_header())
-            hdu.header['BUNIT'] = f'{cube.unit:fits}'
+            hdu.header['BUNIT'] = f'{max_unit:fits}'
             hdu.writeto(maxfile)
 
         # Store parameters
@@ -572,12 +573,13 @@ def pv_products(model_cube_name: Path,
 
     # Get max map
     if get_max_map:
+        max_unit = model_cube.argmax_world(axis=0).unit
         model_max = np.ma.masked_invalid(model_cube.argmax_world(axis=0).value)
         model_max = np.ma.fix_invalid(model_max, fill_value=np.nan).data
         if save_products:
             hdu = fits.PrimaryHDU(data=model_max,
                                   header=model_cube.wcs.sub(2).to_header())
-            hdu.header['BUNIT'] = f'{model_cube.unit:fits}'
+            hdu.header['BUNIT'] = f'{max_unit:fits}'
             hdu.writeto(model_cube_name.with_suffix('.regrid.max_map.fits'))
     else:
         model_max = None
